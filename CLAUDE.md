@@ -1,6 +1,6 @@
-# Beat the Pro — QB Cam
+# Pocket Passer (pocketpasser.io)
 
-A first-person browser QB game. You memorize a play, take the snap, and throw (early, or at the freeze when the real QB released it). Your decision is scored in EPA against the pro's actual throw. The game has a Daily 6 (the same 6 plays for everyone each day, with a leaderboard), practice rounds, and a tutorial.
+A first-person browser QB game. You memorize a play, take the snap, and throw (early, or at the freeze when the real QB released it). Your decision is scored in EPA against the pro's actual throw. A home page offers the Daily 6 (the same 6 plays for everyone each day, with a leaderboard), practice rounds, versus mode (six snaps of one real QB, best score per QB kept in localStorage `qbcam.vs.<name>`), and a tutorial. Esc opens a pause menu (resume / restart play / sound / home); every round ends on an analytics page.
 
 ## Files
 | File | What it is |
@@ -8,8 +8,9 @@ A first-person browser QB game. You memorize a play, take the snap, and throw (e
 | `fp2_src.html` | **3D game source** (three.js 0.160 via import map from jsdelivr). Edit this. |
 | `index.html` | 2D prototype. It also **owns the shared model**: the hand-made drill plays, `pos()`, `evaluate()` (catch/INT/EPA model), `reactOf()`, `heatmap()`, `makePlan()`/`step()` (throw outcome + post-throw motion). |
 | `build.py` | Splices the model from `index.html` into the `/*MODEL*/` and `/*PLAN*/` placeholders of `fp2_src.html`. Writes `fp2.html` (fetches `real_plays.json`, needs a web server) and `beat-the-pro-qb-cam.html` (standalone, data inlined, works from file://). **Run after every edit.** |
-| `real_plays.json` | 15 real NFL passing plays (NGS highlight tracking, 5 Hz, QB-relative coords). |
-| `data/convert.py` | Builds `real_plays.json` from `data/raw/*.tsv` (NFL Next Gen Stats highlight clips from github.com/asonty/ngs_highlights). Per defender it stores top speed (max of tracked speed and the position norm) and a per-frame facing angle (`o`). It auto-fixes clips whose orientation is rotated 90° (the 2017 Keenum clip). |
+| `real_plays.json` | 378 real NFL passing plays (NGS highlight tracking, 5 Hz, QB-relative coords). The original 15 come first, unchanged. |
+| `data/convert.py` | Builds `real_plays.json` from `data/raw/*.tsv` (the original 15) plus every clip in `data/ngs_repo/play_data/` (a gitignored clone of github.com/asonty/ngs_highlights; re-clone with `git clone --depth 1 https://github.com/asonty/ngs_highlights.git data/ngs_repo`). It skips non-passes, trick plays and broken clips and prints the skip reasons. Per defender it stores top speed (max of tracked speed and the position norm) and a per-frame facing angle (`o`). It auto-fixes clips whose orientation is rotated 90° (the 2017 Keenum clip). |
+| `data/convert_bdb2026.py` | Builds the full 2023 season from Big Data Bowl 2026 (`data/bdb2026/`, gitignored) into `data/bdb_plays/<key>.json` + `index.json` (gitignored, ~14k plays, LOCAL ONLY). Gaps filled: 5 OL + 4 DL generated (`gen:true`), untracked players continue at their last velocity after the throw, no jersey numbers (`noNum`, display labels `lab` like WR1), throw spot = recorded landing spot. When the index is served its plays join the one shared pool (Daily 6, practice, versus); the standalone file has only the highlights. |
 | `data/real.js` | Node version of `realToPlay()` for model tests. |
 | `tests/` | Playwright end-to-end scripts: tutorial flow, forced outcomes/cutscenes, art-style sprite export. |
 
@@ -18,30 +19,49 @@ A first-person browser QB game. You memorize a play, take the snap, and throw (e
 python3 build.py
 open beat-the-pro-qb-cam.html            # or: python3 -m http.server, then open fp2.html
 npm i three@0.160.0 playwright && npx playwright install chromium
-python3 tests/e2e_tutorial.py            # prints ['results', 'Play today’s 6', 'Tutorial complete'] then [] (no errors)
+python3 tests/e2e_tutorial.py            # prints ['pre', 'decide', 'done'] ['daily', True, False, True] then [] (no errors)
 ```
 Debug hooks on `window`: `__S` (state), `__PLAYS`, `__load(i)`, `__force(x,y,type,kind,sub,yac)` (force an outcome), `__showResults()`, `__setArt(style)`, `__atlas(style,side,num)`.
 
 ## Model in one paragraph
-Throw = target spot + type (fastball: 0.05 + d/23 s; touch: 0.15 + d/18.5 s; calibrated to real air times). The receiver who can reach the spot is found with a route-gap model and a "read it, brake, come back" redirect model; the smaller gap wins, and a reversal means "thrown behind". After the release, defenders keep their real tracking for a reaction delay. On real plays that delay comes from facing (0.22 s facing the QB to 0.62 s back turned); on drills it's fixed. Then they close at 85% of their sprint speed. Odds: pC ≈ 0.94 − 0.2·gap (−0.06 if behind) × (1 − 0.8·contest), INT rises with defender closeness, plus tip risk from underneath defenders in the ball's low segments. EPA uses a toy EP formula (not nflfastR). A drop is the leftover incompletion when the ball was reachable and no tip or breakup won the roll.
+Throw = target spot + type (fastball: 0.05 + d/23 s; touch: 0.15 + d/18.5 s; calibrated to real air times). The receiver who can reach the spot is found with a route-gap model and a "read it, brake, come back" redirect model; the smaller gap wins, and a reversal means "thrown behind". After the release, defenders keep their real tracking for a reaction delay (0.22 s facing the QB to 0.62 s back turned on real plays), then close at 85% of their sprint speed. **Catch / INT odds** (`cpOdds`) are a multinomial logistic model fit by `tools/fit_completion.py` to ~14k real 2023 throws on the game's own features (receiver gap, defender gap after closing, tip risk, air distance, depth, throw type); held-out log loss 0.58 vs 0.87 for the old hand-tuned odds, calibrated by depth; a ball the receiver can't reach still fades to no catch between 2 and 4 yd off his path. **Expected points** (`EP`) is a down x distance x yards-to-goal table fit by `data/fit_ep.py` to nflverse EP on 118k plays (2023-25); held-out RMSE 0.35 vs 0.62 for the old formula. Rank cut-offs come from `tools/calibrate_ranks.js` (pros' real throws sit around the 78th percentile of catchable throws = "NFL starter"). After each snap the review shows the model's best read (green BEST marker) and one sentence on why it beat yours (`whyBest`). A drop is the leftover incompletion when the ball was reachable and no tip or breakup won the roll. Tools: `tools/model_harness.js` loads the game's model into Node; `tools/dump_features.js` exports features for refitting.
 
 ## Decisions the user has made (don't undo without asking)
 - **Aiming = click a spot on the field (floor).** The user tried and rejected: chest-height aim, a dotted arc/side-view inset, route-snap with a ghost receiver, and trajectory hoops. Keep it simple.
 - **Animations:** keep the current ones. A slapstick pass was tried and reverted.
-- **Art style:** the cardboard cutout is the default. "Clean flat", "Painted" and "Retro pixel" are selectable on the start screen (V cycles). They share one 8-frame sprite atlas (front/back × stand/runA/runB/up), so the animation is identical across styles. The user wants more polished character styles; this is the open thread.
+- **Art style: pixel art only** (user decision). The style chooser and the V key were removed; `ART.cur` is fixed to `pixel` (the other styles remain in code, unused). Sideline figures, team banners and the down box use the same pixelize pass (`pixelCanvas`/`pixTex`); the crowd and LED ribbons are low-res canvases with nearest-neighbour magnification. Type: **Press Start 2P** for display and **VT323** for text, declared as `Retro`/`RetroText` @font-face (gstatic URLs, `size-adjust` so sizes match the old fonts). UI chrome is 8-bit: square corners, stepped pixel frames (offset box-shadows), hard drop shadows, bevelled buttons. Exception the user asked for: the tutorial card and the first-visit question are see-through "liquid glass" (blur + rim highlight) inside the pixel frame. The 3D view renders at full resolution: a low-res pixelated render was tried and rejected (field text and arrows looked fuzzy).
 - No photos of real people (QBs) in the game.
+- Branding: the site is **pocketpasser.io**; "Beat the Pro" is retired from the landing page (the in-game result line "You beat the pro by…" stays). Landing copy (user's, lightly polished): "Think you can outread an NFL quarterback? Real NFL plays. Real NFL coverages. Prove you'd be Brady — if only you were 6-4, 225." Design is deliberately restrained: wordmark, one headline, one primary button, a plain list of other modes.
+- Stadium: straight stands end exactly at the four corners and curved `cornerBowl` sections (same tiers, crowd, LED, facade, roof) fill them, so the bowl is continuous.
+- Home page: no mascot. A pixel-art mascot was tried and removed at the user's request.
+- Home page is minimal: wordmark, headline, lede "Replay real NFL plays. Prove you'd be Brady, if only you were 6'4" 225 lbs.", one big **Play today's 6 snaps** button, a row of text links (Practice, Versus a real QB, How to play), sound/announcer toggles.
+- **One play pool, no fake plays:** every round draws from all real plays: the highlight clips plus, when `data/bdb_plays/index.json` is served, the full 2023 season (no Highlights/Season switch). The hand-made drill plays still live in `index.html` for the 2D prototype and tests but are never used in a round.
+- **First visit:** the first press of the main button asks "Want a quick tutorial?" (green Yes / see-through No, saved as `qbcam.visited`). The tutorial is one real play (`TUT_KEY`, Brady 2018) with four centred cards: real game data, first-person view + routes vanish + 1/2/3 and arrows, slow-mo freeze at the real release, EPA vs the pro ("Can you do it?" leads into today's 6).
+- **No auto-advance:** after a play nothing moves on by itself; a prompt in the middle of the screen says "Press Space for the next play" (tap it on touch).
+- Stadium: all stadium meshes are in the `STAD` group, slid along the field per play (`placeStadium`) so the end stands always sit just past the end zones (red-zone plays used to show 70 yd of empty grass).
+- Rank names come from average EPA per snap vs the pro (`TIERS` in fp2_src.html, Hall of Famer down to Guy in Section 300). Cut-offs are first guesses; recalibrate from real play.
+- Sound: one setting (`H.sound`, saved as `qbcam.sound`) controls everything from page load; all audio goes through `AU.master`.
+- No text-to-speech anywhere (user decision): every voice is a recording. Unrecorded announcer lines are silent; with no cadence clips there is no call and the countdown snaps the ball.
+- Home music: `audio/music/home.mp3` = the user's own "Gridiron Fanfare" (made with Suno; free-plan Suno is non-commercial use). Loops on the home page, fades out when a round starts, restarts from the top on returning home. Without the file the old synthesized brass theme plays.
+- Announcer: discrete soundbites only (no live TTS inference). `announcer_lines.json` = every line (ID `<event>_<n>`); `audio/announcer/<ID>.mp3` is the recording (lines without one are silent); build.py inlines them and writes `audio/announcer/todo.csv` (lines still unrecorded). Render with `tools/gen_announcer.py` (ElevenLabs; key from `ELEVENLABS_API_KEY`, voice `zvaUoS1oKNnOuzT312WU`; `--only` takes ID prefixes). Events: round start, pre-snap by situation, outcome at the catch point, verdict vs the pro (`blunder` at ≤ −1.5 EPA), final rank. The user chose to record only play-by-play, blunders and pre-snap lines so far.
+- Dropback commentary (`dropback` lines) plays 0.3 s after the snap, chosen ONLY from recordings strictly shorter than the time left before the freeze (minus 0.25 s); stops on an early throw. At the freeze, `AU.slowmo()` plays a tape-stop/whoosh and muffles the crowd (low-pass on `crowdBus`); `AU.unslow()` on the throw.
+- Recorded cadences: clips in `audio/cadence/` (gitignored; a real coach's voice from a broadcast clip, local use only) plus `manifest.json` with where "hut" lands. build.py inlines them (data: URIs in the standalone). A clip starts so its "hut" lands on the snap; pressing Space early plays just the hut + pads. Falls back to browser speech when there are no clips.
 - Routes toggle exists for practice/tutorial; it's forced off in Today's 6 so the leaderboard is fair.
 - Look controls: 1/2/3 snap the view left/middle/right; arrow keys free-look during the play; the view locks at the freeze.
+- **Rebindable keys:** Settings → Controls (home page and pause menu). `KB_ACT` lists every action with its default (Space snap, 1/2/3 look, arrows free-look, F/T, R/P replays, M sound); bindings save to `qbcam.keys`. Binding a key that's already in use swaps the two. Esc is fixed (pause menu). Every on-screen key hint reads from `kn(action)`, so labels follow the bindings.
 - Throwing early is allowed after a 0.6 s drop.
 - A receiver who has settled (curl/hitch) turns to the QB, bounces on his toes and waves; both hands go up when the ball is coming to him.
+
+## Data licensing
+All tracking is NFL-owned. The highlight clips have no license; Big Data Bowl data is competition/non-commercial only (2024 and 2025 were taken down at the NFL's request). `data/bdb/` (2027) and `data/bdb2026/` are gitignored and must never be committed or published; publishing real plays publicly is an open decision for the user.
 
 ## Leaderboard
 It uses the claude.ai Artifacts db capability (`claude.use('db')`, Firestore-like API) and only works on the published artifact. The public "Beat the Pro: Daily 6" artifact is a few versions behind this code. Publishing there needs the user's approval. Outside a claude.ai artifact the board shows "isn't available"; a real backend would be needed elsewhere (e.g. for friends' matchmaking rooms).
 
 ## Backlog (also in the user's "Beat the Pro — Feature Backlog" doc)
 - [ ] Import the full Big Data Bowl dataset (Kaggle CSVs) → hundreds of plays, real season-long top speeds.
-- [ ] Learned completion-probability model trained on BDB to replace the hand-tuned odds.
-- [ ] Versus mode: play only one real QB's snaps and try to beat him.
+- [x] Learned completion-probability model trained on BDB (2023 season) replaces the hand-tuned odds; real EP table replaces the toy formula.
+- [x] Versus mode: play only one real QB's snaps and try to beat him (QBs with 5+ plays).
 - [ ] Versus friends: shared room, same plays, N tries, head-to-head (needs a backend).
-- [ ] Real recorded voice lines (cadence, "set, hut", crowd) — waiting on audio files.
+- [~] Real recorded voice lines: 3 set/hut cadences done (audio/cadence/); crowd and more calls still wanted.
 - [ ] More polished character art (current exploration).

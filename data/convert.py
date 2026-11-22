@@ -8,9 +8,20 @@ def fl(v):
     except: return None
 out=[]
 order=['2017_MIN_2018011401_4497','2018_KC_2018111900_4120','2019_MIA_2019122910_1072','2018_NO_2018110409_3891','2018_NE_2019020300_3556','2019_BAL_2019102010_1654','2018_GB_2018090912_3564','2019_BAL_2019090803_683','2018_MIA_2018121607_1435','2018_DAL_2018112201_2897','2018_KC_2018101412_2072','2019_ARI_2019092908_631','2018_PHI_2019011301_276','2018_BUF_2018112501_875','2018_HOU_2018121500_1484']
-for key in order:
-    rows=list(csv.DictReader(open(os.path.join(HERE,'raw',f'{key}.tsv')),delimiter='\t'))
+# clip sources: the original 15 in raw/, then every clip from github.com/asonty/ngs_highlights cloned into ngs_repo/ (gitignored)
+FILES={}
+for src in (os.path.join(HERE,'raw'),os.path.join(HERE,'ngs_repo','play_data')):
+    for f in sorted(glob.glob(os.path.join(src,'20*.tsv'))):FILES.setdefault(os.path.basename(f)[:-4],f)
+KEYS=[k for k in order if k in FILES]+[k for k in sorted(FILES) if k not in order]
+class Skip(Exception):pass
+skips={}
+def convert(key):
+    rows=list(csv.DictReader(open(FILES[key]),delimiter='\t'))
     r0=rows[0];desc=r0['playDescription']
+    if r0.get('playType','play_type_pass')!='play_type_pass':raise Skip('not a pass ('+r0.get('playType','')+')')
+    if r0['seasonType']=='PRO':raise Skip('Pro Bowl')
+    if 'No Play' in desc or 'TWO-POINT' in desc.upper():raise Skip('no play / two-point try')
+    if int(float(r0['down'] or 0)) not in (1,2,3,4):raise Skip('no down')
     frames={}
     for r in rows: frames.setdefault(int(r['frame']),[]).append(r)
     ev={}
@@ -19,20 +30,23 @@ for key in order:
             if r['event'] and r['event'] not in ev: ev[r['event']]=f
     snap=ev.get('ball_snap');fwd=ev.get('pass_forward') or ev.get('pass_shovel')
     arr=ev.get('pass_arrived') or ev.get('pass_outcome_caught') or ev.get('pass_outcome_interception') or ev.get('pass_outcome_incomplete')
-    if snap is None or fwd is None or arr is None: print('skip',key,ev.keys());continue
+    if snap is None or fwd is None or arr is None:raise Skip('missing snap/throw/arrival event')
     d=1 if r0['playDirection']=='right' else -1
     # some older clips store orientation rotated 90 deg; measure it against motion direction of fast runners
     import statistics
     _dd=[((fl(r['o'])-fl(r['dir'])+180)%360-180) for r in rows if r['displayName']!='ball' and r['o'] and r['dir'] and (fl(r['s']) or 0)>4.5]
     oFix=round(statistics.median(_dd)/90)*90 if _dd else 0
     ball={int(r['frame']):(fl(r['x']),fl(r['y'])) for r in rows if r['displayName']=='ball'}
+    if not ball.get(snap) or ball[snap][0] is None:raise Skip("no ball position at snap")
     losX=ball[snap][0]
     tx=lambda x,y:(round((W-y) if d>0 else y,2),round((x-losX)*d,2))
     players={}
     for r in rows:
         if r['displayName']=='ball':continue
         players.setdefault(r['nflId'] or r['displayName'],[]).append(r)
-    m=re.search(r'([A-Z][a-z]?\.[A-Za-z\'-]+) pass',desc);qbn=m.group(1)
+    m=re.search(r'([A-Z][a-z]?\.[A-Za-z\'-]+) pass',desc)
+    if not m:raise Skip('no passer in description')
+    qbn=m.group(1)
     tm=re.search(r'(?:pass [a-z ]*?(?:to|intended for) )([A-Z][a-z]?\.[A-Za-z\'-]+)',desc);tgt=tm.group(1) if tm else None
     def match(nm,abbr):
         ini,last=abbr.split('.',1);fn,ln=nm.split(' ',1) if ' ' in nm else (nm,'')
@@ -77,10 +91,14 @@ for key in order:
             p['react']=.4 if pos in ('CB','DB','S','SS','FS') else .35  # fallback only
             p['o']=ori   # facing angle per frame, game coords (deg, atan2(dy,dx))
             de.append(p)
-    bx=ball.get(arr) or ball.get(arr-1);spot=tx(*bx)
+    if qb is None:raise Skip('passer is not a tracked QB')
+    bx=ball.get(arr) or ball.get(arr-1)
+    if not bx or bx[0] is None:raise Skip('no ball position at arrival')
+    spot=tx(*bx)
     qbT=None
     for i in range(0,len(qb['f']),3):
         if qb['f'][i]<=T+.05:qbT=(qb['f'][i+1],qb['f'][i+2])
+    if qbT is None:raise Skip('QB not tracked at the throw')
     dd=math.hypot(spot[0]-qbT[0],spot[1]-qbT[1]);air=tA-T
     typ='fast' if abs((.05+dd/23)-air)<=abs((.15+dd/18.5)-air) else 'touch'
     kind='int' if 'INTERCEPTED' in desc else 'incomplete' if 'incomplete' in desc.lower() else 'complete'
@@ -95,11 +113,20 @@ for key in order:
     cdesc=re.sub(r'^\([^)]*\)\s*','',desc);cdesc=re.sub(r'^\((Shotgun|No Huddle, Shotgun|No Huddle)\)\s*','',cdesc)
     cdesc=re.split(r'(?<=\.)\s+(?=(The Replay|PENALTY|Penalty|NE 12|Pass \d|Caught|[A-Z][a-z]+ challenge|CLV|Los Angeles))',cdesc)[0]
     tgtP=next((p for p in off if p.get('target')),None)
-    out.append({'key':key,'real':True,'season':int(r0['season']),'round':rnd,'date':date.strftime('%b %-d, %Y'),'home':home,'away':away,'offT':offT,'defT':defT,
+    if not (0.8<=T<=8 and 0<air<=4.5):raise Skip(f'odd timing T={T:.1f} air={air:.1f}')
+    if tgtP is None and kind!='int':raise Skip('target receiver not found')
+    # the game needs real receivers: skips trick plays (tackle-eligible, QB/LB catches) and clips with mixed-up team flags
+    if sum(p['elig'] for p in off)<2:raise Skip('fewer than 2 eligible receivers')
+    if tgtP is not None and not tgtP['elig']:raise Skip('target is not a WR/TE/RB')
+    return {'key':key,'real':True,'season':int(r0['season']),'round':rnd,'date':date.strftime('%b %-d, %Y'),'home':home,'away':away,'offT':offT,'defT':defT,
       'offName':TEAMS.get(offT,offT),'defName':TEAMS.get(defT,defT),'down':int(float(r0['down'])),'dist':int(float(r0['yardsToGo'])),'ytg':ytg,
       'clock':f"Q{q} · {clk} · "+('tied' if diff==0 else ('up ' if diff>0 else 'down ')+str(abs(diff))),'score':[hs,vs],'T':round(T,2),
       'qb':qb,'off':off,'def':de,'pro':{'targetNum':tgtP['num'] if tgtP else None,'spot':{'x':spot[0],'y':spot[1]},'type':typ,'result':{'kind':kind,'yac':yac},'text':cdesc,'gain':gain,'air':round(air,2)},
-      'targetName':tgtP['name'] if tgtP else None})
-    print(key,qb['name'],'T',round(T,2),'air',round(air,2),typ,kind,'spot',spot,'tgt',tgtP and tgtP['name'],'ytg',ytg,len(off),len(de))
+      'targetName':tgtP['name'] if tgtP else None}
+for key in KEYS:
+    try:out.append(convert(key))
+    except Skip as e:skips[str(e).split(' (')[0].split(' T=')[0]]=skips.get(str(e).split(' (')[0].split(' T=')[0],0)+1
+    except Exception as e:skips['error: '+type(e).__name__]=skips.get('error: '+type(e).__name__,0)+1;print('error',key,repr(e))
+print('clips',len(KEYS),'kept',len(out),'skipped',skips)
 json.dump(out,open(os.path.join(HERE,'..','real_plays.json'),'w'),separators=(',',':'))
 print(os.path.getsize(os.path.join(HERE,'..','real_plays.json')))

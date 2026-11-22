@@ -2,3 +2,12 @@ node_modules/
 tests/out_*
 fp2.html
 __pycache__/
+data/bdb/
+data/ngs_repo/
+data/bdb2026/
+audio/cadence/
+audio/announcer/todo.csv
+data/bdb_plays/
+beat-the-pro-qb-cam.html
+out_*.png
+dist/

@@ -11,7 +11,10 @@ async def main():
     await pg.route('**/three.module.min.js',lambda r:r.fulfill(status=200,content_type='application/javascript',body=THREE))
     await pg.route('**/fonts.googleapis.com/**',lambda r:r.abort())
     await pg.goto((ROOT/'beat-the-pro-qb-cam.html').as_uri());await pg.wait_for_timeout(2500)
-    await pg.click('#go');await pg.wait_for_timeout(500)
+    await pg.evaluate("localStorage.setItem('qbcam.visited','1')");await pg.click('#goPractice')
+    for _ in range(40):
+      if await pg.evaluate("!!(__S.round&&__S.round.kind)"):break
+      await pg.wait_for_timeout(150)
     for name,kind,sub,yac in CASES:
       await pg.evaluate("__S.round.kind='practice';__load(__PLAYS.findIndex(p=>p.name==='Curl-flat with a seam'))");await pg.wait_for_timeout(300)
       await pg.evaluate("__S.limit="+("200" if name=='sack' else "0"));await pg.keyboard.press('Space')
