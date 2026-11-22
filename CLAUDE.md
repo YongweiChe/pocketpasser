@@ -55,6 +55,9 @@ Throw = target spot + type (fastball: 0.05 + d/23 s; touch: 0.15 + d/18.5 s; cal
 ## Data licensing
 All tracking is NFL-owned. The highlight clips have no license; Big Data Bowl data is competition/non-commercial only (2024 and 2025 were taken down at the NFL's request). `data/bdb/` (2027) and `data/bdb2026/` are gitignored and must never be committed or published; publishing real plays publicly is an open decision for the user.
 
+## Hosting
+Live at **https://pocketpasser.onrender.com** (Render static site `srv-dc1jee3l550s73em5n1g`, free plan). Source: public GitHub repo github.com/YongweiChe/pocketpasser; every push to `main` redeploys (build command `python3 build.py`, publish folder `public/`). `public/` is written by build.py and holds only shareable files: the game as index.html, `real_plays.json` (highlights), announcer clips, home music. No Big Data Bowl plays and no cadence clips, so the live snap is on the countdown. `RENDER_API_KEY` is in ~/.zshrc. The user does not own pocketpasser.io yet (don't connect a custom domain until they do).
+
 ## Leaderboard
 It uses the claude.ai Artifacts db capability (`claude.use('db')`, Firestore-like API) and only works on the published artifact. The public "Beat the Pro: Daily 6" artifact is a few versions behind this code. Publishing there needs the user's approval. Outside a claude.ai artifact the board shows "isn't available"; a real backend would be needed elsewhere (e.g. for friends' matchmaking rooms).
 
