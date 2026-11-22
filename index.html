@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Beat the Pro QB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: game-night broadcast, confident and quick
+   IDEA: a coach's play card next to the telestrator view of the field
+   PICTURE: the live field canvas is the game, at the top, large
+   COLOUR and TYPE: stadium night ground, turf green field, chalk routes, gold accent; Barlow Condensed + Barlow
+   LAYOUT: field left (or top on narrow), play card + controls right */
+:root{color-scheme:light dark;--bg:light-dark(#e9ece6,#0d1411);--card:light-dark(#ffffff,#16211c);--ink:light-dark(#14201a,#eef3ee);--mute:light-dark(#56645c,#9fb0a6);--line:light-dark(#d3dad4,#26352d);--gold:#f5c518;--red:#e5484d;--grn:#2fb26a;--btn:light-dark(#14201a,#eef3ee);--btnink:light-dark(#fff,#0d1411)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,.big{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700;line-height:1.05;margin:0}
+h1{font-size:clamp(30px,4vw,44px);text-wrap:balance}
+header{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:end;justify-content:space-between;padding:20px max(3vw,14px) 12px;max-width:1240px;margin:0 auto}
+header p{margin:4px 0 0;color:var(--mute);max-width:60ch}
+#score{font-family:"Barlow Condensed",system-ui,sans-serif;font-size:22px;font-weight:600;white-space:nowrap}
+main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;padding:0 max(3vw,14px) 28px;max-width:1240px;margin:0 auto;align-items:start}
+.fieldwrap{position:relative;border-radius:14px;overflow:hidden;background:#1d5e35;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+canvas{display:block;width:100%;height:auto;touch-action:manipulation;cursor:crosshair}
+#banner{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(10,16,12,.85);color:#fff;padding:8px 16px;border-radius:999px;font:600 16px Barlow,system-ui,sans-serif;white-space:nowrap;pointer-events:none;transition:opacity .2s}
+#banner:empty{opacity:0}
+aside{display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.sit{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.sit .big{font-size:34px}
+.tag{font-size:14px;color:var(--mute)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:600 16px Barlow,system-ui,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--btn);color:var(--btnink);border-color:var(--btn)}
+button[disabled]{opacity:.4;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0}
+.seg button[aria-pressed=true]{background:var(--gold);color:#14201a}
+label.chk{display:inline-flex;gap:8px;align-items:center;min-height:44px;font-size:15px;cursor:pointer}
+label.chk input{width:20px;height:20px;accent-color:var(--gold)}
+#msg{margin:10px 0 0;color:var(--mute);font-size:15px}
+.res .big{font-size:30px}
+.vs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:12px 0}
+.vs div{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.vs b{display:block;font-family:"Barlow Condensed",system-ui,sans-serif;font-size:26px;line-height:1.1}
+.vs small{color:var(--mute);font-size:14px;display:block}
+.pos{color:var(--grn)}.neg{color:var(--red)}
+.note{font-size:15px;color:var(--mute);margin:8px 0 0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;color:var(--mute);margin-top:8px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px}
+footer{max-width:1240px;margin:0 auto;padding:0 max(3vw,14px) 28px;color:var(--mute);font-size:14px}
+@media(max-width:860px){main{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){#banner{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Beat the pro: one read, one throw</h1>
+    <p>Study the play, snap it, and the action freezes at the instant the real quarterback let it go. Pick your spot. Then see if you made a better decision than he did.</p>
+  </div>
+  <div id="score">Play 1 of 3</div>
+</header>
+<main>
+  <div class="fieldwrap">
+    <canvas id="c" width="640" height="624" aria-label="Football field, top-down view"></canvas>
+    <div id="banner"></div>
+  </div>
+  <aside>
+    <div class="card">
+      <div class="sit"><span class="big" id="dd">3rd &amp; 7</span><span class="tag" id="fp"></span></div>
+      <div class="tag" id="pname" style="margin-top:4px"></div>
+      <p id="msg"></p>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" id="snap">Snap (space)</button>
+        <div class="seg" role="group" aria-label="Throw type">
+          <button id="tFast" aria-pressed="false">Fastball (F)</button>
+          <button id="tTouch" aria-pressed="true">Touch (T)</button>
+        </div>
+        <button id="away" disabled>Throw it away</button>
+      </div>
+      <div class="row">
+      </div>
+      <div class="row" style="margin-top:4px">
+        <span class="tag">Decision time</span>
+        <div class="seg" role="group" aria-label="Decision time" id="diff">
+          <button data-ms="0" aria-pressed="false">Unlimited</button>
+          <button data-ms="5000" aria-pressed="false">5 s</button>
+          <button data-ms="3000" aria-pressed="true">3 s</button>
+          <button data-ms="1000" aria-pressed="false">1 s</button>
+        </div>
+      </div>
+    </div>
+    <div class="card res" id="res" hidden></div>
+  </aside>
+</main>
+<footer>Prototype: the three plays and their "pro" results are made up for demonstration, and the catch and EPA numbers come from a simple toy model. A real version would load NFL player tracking data, such as the Big Data Bowl releases.</footer>
+
+<script>
+{
+const W=53.33, MID=26.67, YMIN=-12, YMAX=40, PPY=12;
+const clampX=v=>Math.max(0.5,Math.min(W-0.5,v));
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const sig=z=>1/(1+Math.exp(-z));
+const lerp=(a,b,u)=>a+(b-a)*u;
+
+/* ---------- plays (hand-made samples) ---------- */
+const P=(path,speed,delay=0)=>({type:'path',path,speed,delay});
+const MAN=(target,off0,off1,lag,settle=1.5)=>({type:'man',target,off0,off1,lag,settle});
+const QB={id:'QB',label:'QB',beh:P([[MID,-5],[MID,-7.5]],3,0.1)};
+const PLAYS=[
+{name:'Curl-flat with a seam',down:3,dist:7,ytg:65,clock:'Q4 · 2:10 · down 3',T:2.25,coverage:'Cover 3',
+ off:[{id:'X',speed:8,beh:P([[5,0],[5,12],[6.5,10]],8)},
+      {id:'Y',speed:8,beh:P([[15,-1],[16,8],[17.5,40]],8)},
+      {id:'TE',speed:6.5,beh:P([[33,-1],[36,2],[44,3],[52,3.5]],6.5)},
+      {id:'Z',speed:8,beh:P([[47,0],[47,12],[45.5,10]],8)},
+      {id:'RB',speed:6.5,beh:P([[24,-6],[20,-5],[12,-3],[4,-2]],6.5,0.5)}],
+ def:[{id:'CB',sprint:8,react:.45,beh:P([[5,7],[6,12],[8,19],[9,22]],6)},
+      {id:'CB',key:'RCB',sprint:8,react:.45,beh:P([[47,7],[46,12],[44,19],[43,22]],6)},
+      {id:'FS',sprint:7.5,react:.45,beh:P([[26.7,13],[25,20],[24,23]],5)},
+      {id:'SS',sprint:7.5,react:.35,beh:P([[38,8],[41,6],[46,3.5],[50,3]],5.5)},
+      {id:'NB',sprint:7.5,react:.35,beh:P([[14,5],[12,8],[10,9]],4)},
+      {id:'M',sprint:7,react:.35,beh:P([[26.7,5],[25,9],[23,10]],4.5)},
+      {id:'W',sprint:7,react:.35,beh:P([[32,5],[34,9],[36,10]],4.5)}],
+ pro:{target:'Z',spot:{x:45.0,y:10.3},type:'fast',result:{kind:'complete',yac:2},text:'Took the curl to Z for a first down.'},
+ note:'Cover 3. The right curl-flat defender widened with the tight end, so the curl was a safe first down. The seam split the free safety and the left corner, which was worth more if you trusted it and threw before Y cleared the hook defender.'},
+{name:'Dig and go',down:2,dist:10,ytg:34,clock:'Q2 · 0:48 · up 4',T:2.0,coverage:'Cover 1 with a blitz',
+ off:[{id:'X',speed:8,beh:P([[6,0],[6,12],[22,13.5],[40,13.5]],8)},
+      {id:'H',speed:7.5,beh:P([[16,-1],[16,5],[9,5],[1,5]],7.5)},
+      {id:'Z',speed:9,beh:P([[47,0],[47.5,8],[47,46]],9)},
+      {id:'RB',speed:5,beh:P([[24,-6],[24.1,-6],[28,-2],[31,1]],5,1.0)},
+      {id:'TE',speed:1,block:true,beh:P([[33,-1],[33,-1.6]],1)}],
+ def:[{id:'CB',sprint:8,react:.4,beh:MAN('X',[0.5,6],[0.6,0.3],.3,1.8)},
+      {id:'NB',sprint:7.5,react:.4,beh:MAN('H',[0,5],[0.3,0.6],.3,1.6)},
+      {id:'CB',key:'RCB',sprint:8,react:.35,beh:MAN('Z',[-0.3,1.2],[-0.8,-0.6],.15,1.2)},
+      {id:'SS',sprint:7.5,react:.45,beh:MAN('RB',[5,12],[1.5,2],.4,2.5)},
+      {id:'FS',sprint:7.5,react:.5,beh:P([[26.7,14],[26.7,19],[29,23]],4)},
+      {id:'M',sprint:7,react:.3,beh:P([[26.7,5],[25,10],[23,12]],4.5)},
+      {id:'W',rush:true,sprint:7,react:1,beh:P([[32,4],[30,0],[28.5,-5.6]],6)}],
+ pro:{target:'Z',spot:{x:46.8,y:37.5},type:'touch',result:{kind:'complete',yac:0},text:'Dropped a touch throw over the trailing corner for a touchdown.'},
+ note:'Cover 1 with a blitz. The robber linebacker sat on the dig, so throwing inside was dangerous. The corner was trailing the go route, so a touch throw dropped over his outside shoulder was the big play. You had to throw it before Z looked open.'},
+{name:'Smash',down:1,dist:10,ytg:75,clock:'Q2 · 6:31 · tied',T:2.4,coverage:'Cover 2',
+ off:[{id:'X',speed:7.5,beh:P([[6,0],[6,6],[6.5,5]],7.5)},
+      {id:'H',speed:8,beh:P([[16,-1],[16,11],[6,22],[3,26]],8)},
+      {id:'Y',speed:8,beh:P([[37,-1],[37,11],[47,22],[50,26]],8)},
+      {id:'Z',speed:7.5,beh:P([[47,0],[47,6],[46.5,5]],7.5)},
+      {id:'RB',speed:5,beh:P([[24,-6],[24.1,-6],[30,-3],[34,-1]],5,0.9)}],
+ def:[{id:'CB',sprint:8,react:.35,beh:P([[6,4],[5,6],[5,7]],3)},
+      {id:'CB',key:'RCB',sprint:8,react:.35,beh:P([[47,4],[48,6],[48,7]],3)},
+      {id:'S',sprint:7.5,react:.45,beh:P([[14,13],[15,19],[16.5,24]],4.5)},
+      {id:'S',key:'RS',sprint:7.5,react:.45,beh:P([[40,13],[41,20],[43,26]],4.5)},
+      {id:'M',sprint:7,react:.35,beh:P([[26.7,5],[26.7,12],[26.7,16]],5)},
+      {id:'LB',sprint:7,react:.35,beh:P([[16,5],[14,9],[12,11]],4.5)},
+      {id:'LB',key:'RLB',sprint:7,react:.35,beh:P([[37,5],[39,9],[41,11]],4.5)}],
+ pro:{target:'H',spot:{x:6.5,y:23.5},type:'fast',result:{kind:'complete',yac:3},text:'Fit the corner route between the squatting corner and the safety.'},
+ note:'Cover 2. Both corners squatted on the hitches, so the hitches were contested. The left safety drifted inside with H\'s stem, which opened the hole on the left corner route. The right safety stayed wide, so the right corner route was covered.'}
+,
+{name:'Four verticals',down:2,dist:8,ytg:60,clock:'Q3 · 9:12 · up 3',T:2.6,coverage:'Cover 3',
+ off:[{id:'X',speed:8.5,beh:P([[5,0],[5,45]],8.5)},
+      {id:'H',speed:8,beh:P([[16,-1],[17,10],[18.5,45]],8)},
+      {id:'Y',speed:8,beh:P([[37,-1],[36,10],[34.5,45]],8)},
+      {id:'Z',speed:8.5,beh:P([[48,0],[48,45]],8.5)},
+      {id:'RB',speed:5,beh:P([[24,-6],[24.1,-6],[29,-2],[33,1]],5,1.0)}],
+ def:[{id:'CB',sprint:8,react:.45,beh:P([[5,7],[5,14],[5,26],[5,32]],7)},
+      {id:'CB',key:'RCB',sprint:8,react:.45,beh:P([[48,7],[48,14],[48,26],[48,32]],7)},
+      {id:'FS',sprint:7.5,react:.45,beh:P([[26.7,13],[29,22],[31.5,28]],5)},
+      {id:'NB',sprint:7.5,react:.35,beh:P([[16,5],[15,10],[14,12]],4.5)},
+      {id:'M',sprint:7,react:.35,beh:P([[26.7,5],[26.7,10],[26,12]],4.5)},
+      {id:'W',sprint:7,react:.35,beh:P([[37,5],[37,10],[38,12]],4.5)},
+      {id:'SS',sprint:7.5,react:.35,beh:P([[42,6],[44,6],[46,5]],3)}],
+ pro:{target:'H',spot:{x:18.2,y:28.5},type:'fast',result:{kind:'complete',yac:4},text:'Hit H up the seam behind the hook defender.'},
+ note:'Cover 3 against four verticals. The free safety can only take one seam. He drifted to Y, so H\'s seam was open over the hook defender.'},
+{name:'Mesh',down:3,dist:4,ytg:42,clock:'Q2 · 3:40 · down 6',T:2.1,coverage:'Cover 1',
+ off:[{id:'X',speed:8,beh:P([[6,0],[6,40]],8)},
+      {id:'H',speed:7.5,beh:P([[16,-1],[19,2.5],[34,3],[50,3]],7.5)},
+      {id:'Y',speed:7.5,beh:P([[37,-1],[34,3.8],[19,4.2],[3,4.2]],7.5)},
+      {id:'Z',speed:8,beh:P([[48,0],[48,10],[38,11],[26,11]],8)},
+      {id:'RB',speed:7.5,beh:P([[24,-6],[30,-4],[40,-1],[46,6],[47,40]],7.5)}],
+ def:[{id:'CB',sprint:8,react:.4,beh:MAN('X',[0.5,6],[0.6,0.5],.25,1.5)},
+      {id:'NB',sprint:7.5,react:.45,beh:MAN('H',[0,4],[-0.6,-0.8],.55,1.6)},
+      {id:'CB',key:'RCB',sprint:8,react:.4,beh:MAN('Z',[-0.3,5],[0.5,0.4],.3,1.6)},
+      {id:'SS',sprint:7.5,react:.45,beh:MAN('Y',[0,5],[0.4,0.5],.45,1.6)},
+      {id:'LB',sprint:7,react:.45,beh:MAN('RB',[0,10],[-1.2,-1.5],.5,2.2)},
+      {id:'FS',sprint:7.5,react:.5,beh:P([[26.7,14],[26.7,18],[27,20]],4)},
+      {id:'W',rush:true,sprint:7,react:1,beh:P([[31,4],[29,0],[28,-5.6]],6)}],
+ pro:{target:'H',spot:{x:31.5,y:3},type:'fast',result:{kind:'complete',yac:5},text:'Hit H on the shallow cross for a first down.'},
+ note:'Cover 1. The mesh crossers rubbed off their defenders, so the shallow cross was an easy first down. The running back\'s wheel up the sideline beat the linebacker for a bigger play.'},
+{name:'Flood',down:1,dist:10,ytg:70,clock:'Q1 · 11:05 · tied',T:2.5,coverage:'Cover 3',
+ off:[{id:'Z',speed:8.5,beh:P([[47,0],[47,45]],8.5)},
+      {id:'Y',speed:7.5,beh:P([[37,-1],[37,10],[47,13.5],[52,13.5]],7.5)},
+      {id:'RB',speed:7,beh:P([[24,-6],[32,-4],[44,0],[52,1]],7,.2)},
+      {id:'X',speed:8,beh:P([[6,0],[6,12],[20,13],[34,13]],8)},
+      {id:'TE',speed:1,block:true,beh:P([[33,-1],[33,-1.6]],1)}],
+ def:[{id:'CB',sprint:8,react:.45,beh:P([[5,7],[5,14],[6,22]],6)},
+      {id:'CB',key:'RCB',sprint:8,react:.45,beh:P([[47,7],[47,14],[46,24],[46,28]],6)},
+      {id:'FS',sprint:7.5,react:.45,beh:P([[26.7,13],[27,20],[28,24]],5)},
+      {id:'SS',sprint:7.5,react:.35,beh:P([[39,6],[42,6],[46,4],[50,3]],4.5)},
+      {id:'NB',sprint:7.5,react:.35,beh:P([[16,5],[15,9],[15,11]],4)},
+      {id:'M',sprint:7,react:.35,beh:P([[26.7,5],[28,9],[29,11]],4.5)},
+      {id:'W',sprint:7,react:.35,beh:P([[34,5],[37,8],[39,10]],4.5)}],
+ pro:{target:'RB',spot:{x:42,y:-0.5},type:'fast',result:{kind:'complete',yac:3},text:'Dumped it to the back in the flat for a short gain.'},
+ note:'Cover 3 against a flood: three receivers to one side against two defenders. The flat defender jumped the running back, leaving the sail route open at 13 yards.'},
+{name:'Y-cross',down:2,dist:6,ytg:55,clock:'Q3 · 4:27 · down 3',T:2.7,coverage:'Cover 4 (quarters)',
+ off:[{id:'Y',speed:8,beh:P([[37,-1],[36,6],[22,14],[8,17],[2,18]],8)},
+      {id:'X',speed:8.5,beh:P([[5,0],[5,45]],8.5)},
+      {id:'Z',speed:8,beh:P([[48,0],[48,12],[40,22],[34,36]],8)},
+      {id:'H',speed:7.5,beh:P([[16,-1],[16,5],[8,6],[2,6]],7.5)},
+      {id:'RB',speed:5,beh:P([[24,-6],[20,-3],[14,0]],5,1.1)}],
+ def:[{id:'CB',sprint:8,react:.45,beh:P([[5,7],[5,14],[5,26],[5,32]],7)},
+      {id:'S',sprint:7.5,react:.45,beh:P([[16,12],[13,17],[10,24]],5)},
+      {id:'S',key:'RS',sprint:7.5,react:.45,beh:P([[38,12],[39,18],[38,26]],5)},
+      {id:'CB',key:'RCB',sprint:8,react:.45,beh:P([[48,7],[48,14],[44,24]],6)},
+      {id:'M',sprint:7,react:.35,beh:P([[26.7,5],[24,9],[21,10]],4.5)},
+      {id:'W',sprint:7,react:.35,beh:P([[33,5],[34,8],[36,9]],4.5)},
+      {id:'NB',sprint:7.5,react:.35,beh:P([[13,5],[10,6],[6,6]],4.5)}],
+ pro:{target:'Y',spot:{x:18.5,y:16.5},type:'fast',result:{kind:'complete',yac:6},text:'Led Y across the field behind the linebackers.'},
+ note:'Quarters. The left corner and safety carried the vertical routes, so Y\'s deep cross came open behind the linebackers and in front of the safeties.'},
+{name:'Slant-flat',down:3,dist:8,ytg:8,clock:'Q4 · 0:31 · down 4',T:1.4,coverage:'Red-zone Cover 2',
+ off:[{id:'X',speed:8,beh:P([[6,0],[6,2],[14,7],[22,11]],8)},
+      {id:'H',speed:7.5,beh:P([[16,-1],[14,1],[6,2],[1,2]],7.5)},
+      {id:'Y',speed:7.5,beh:P([[37,-1],[37,2],[31,6],[24,9]],7.5)},
+      {id:'Z',speed:8,beh:P([[47,0],[47.5,6],[47.5,17]],8)},
+      {id:'RB',speed:4,beh:P([[24,-6],[26,-3],[28,-1]],4,.6)}],
+ def:[{id:'CB',sprint:8,react:.35,beh:P([[6,3],[5,3],[4,3.5]],3)},
+      {id:'S',sprint:7.5,react:.45,beh:P([[14,9],[13,11],[12,13]],4)},
+      {id:'S',key:'RS',sprint:7.5,react:.45,beh:P([[40,9],[41,11],[43,13]],4)},
+      {id:'CB',key:'RCB',sprint:8,react:.35,beh:P([[47,3],[48,4],[48,6]],3)},
+      {id:'M',sprint:7,react:.3,beh:P([[26.7,4],[26,7],[25.5,8.5]],4.5)},
+      {id:'LB',sprint:7,react:.35,beh:P([[17,4],[13,4],[10,4]],5)},
+      {id:'LB',key:'RLB',sprint:7,react:.35,beh:P([[36,4],[37,6],[37,7]],4)}],
+ pro:{target:'X',spot:{x:16,y:8},type:'fast',result:{kind:'complete',yac:2},text:'Hit the slant behind the squatting corner for a touchdown.'},
+ note:'Red-zone Cover 2. The corner squatted on the flat and the linebacker chased it, so the slant came open behind them.'},
+{name:'Stick',down:3,dist:4,ytg:30,clock:'Q2 · 1:12 · up 7',T:1.9,coverage:'Cover 3',
+ off:[{id:'TE',speed:6.5,beh:P([[33,-1],[33,5],[33.5,5]],6.5)},
+      {id:'Y',speed:7.5,beh:P([[38,-1],[41,1],[49,2],[52,2]],7.5)},
+      {id:'Z',speed:8.5,beh:P([[47,0],[47,40]],8.5)},
+      {id:'X',speed:8,beh:P([[6,0],[6,6],[12,18],[16,30]],8)},
+      {id:'RB',speed:5,beh:P([[24,-6],[20,-4],[16,-2]],5,.8)}],
+ def:[{id:'SS',sprint:7.5,react:.35,beh:P([[38,5],[37,6],[35,6]],3)},
+      {id:'CB',key:'RCB',sprint:8,react:.45,beh:P([[47,7],[47,14],[46,22]],6)},
+      {id:'FS',sprint:7.5,react:.45,beh:P([[26.7,13],[24,18],[22,22]],5)},
+      {id:'CB',sprint:8,react:.45,beh:P([[6,7],[6,13],[9,20]],6)},
+      {id:'M',sprint:7,react:.35,beh:P([[26.7,5],[29,6.5],[31,7]],4.5)},
+      {id:'NB',sprint:7.5,react:.35,beh:P([[16,5],[15,8],[14,9]],4)},
+      {id:'W',sprint:7,react:.35,beh:P([[30,4],[31,4.5],[32,5]],3)}],
+ pro:{target:'TE',spot:{x:33.4,y:5},type:'fast',result:{kind:'incomplete'},text:'Forced the stick into two defenders and it was broken up.'},
+ note:'Cover 3. The curl-flat defender and the linebacker both sat on the stick route. The flat was the read: Y had room to run for the first down.'},
+{name:'Goal-line slant',down:2,dist:4,ytg:4,clock:'Q4 · 0:09 · down 4',T:1.2,coverage:'Cover 0 blitz',
+ off:[{id:'X',speed:8,beh:P([[6,0],[6.5,4],[6,13]],8)},
+      {id:'Z',speed:8,beh:P([[47,0],[46.5,4],[47,13]],8)},
+      {id:'H',speed:7.5,beh:P([[16,-1],[17,1],[23,4],[29,6]],7.5)},
+      {id:'Y',speed:6.5,beh:P([[34,-1],[35,2],[41,3],[47,3]],6.5)},
+      {id:'RB',speed:1,block:true,beh:P([[24,-5],[24,-5.5]],1)}],
+ def:[{id:'CB',sprint:8,react:.3,beh:MAN('X',[0.5,1],[0.4,-0.3],.1,1)},
+      {id:'CB',key:'RCB',sprint:8,react:.3,beh:MAN('Z',[-0.3,1],[-0.2,0.4],.1,1)},
+      {id:'NB',sprint:7.5,react:.4,beh:MAN('H',[0,2],[-0.8,-0.6],.35,1.2)},
+      {id:'SS',sprint:7.5,react:.35,beh:MAN('Y',[0,3],[0.3,0.4],.2,1.2)},
+      {id:'M',rush:true,sprint:7,react:1,beh:P([[25,3],[25.5,0],[26,-5.5]],6)},
+      {id:'W',rush:true,sprint:7,react:1,beh:P([[30,3],[29,0],[27.5,-5.5]],6)},
+      {id:'FS',rush:true,sprint:7,react:1,beh:P([[20,5],[22,0],[25,-5.5]],6)}],
+ pro:{target:'H',spot:{x:24,y:4.6},type:'fast',result:{kind:'complete',yac:0},text:'Fired the slant in behind the blitz for a touchdown.'},
+ note:'Cover 0 blitz with no safety help. The corners pressed the fades tight, so the slant behind the blitzing linebackers was the quick answer.'}
+];
+function prepPlay(p){p.byId={QB:p.qb||QB};p.off.forEach(o=>{o.label=o.label||o.id;p.byId[o.id]=o});p.def.forEach(d=>{d.label=d.label||d.id;d.key=d.key||d.id;p.byId[d.key]=d});}
+PLAYS.forEach(prepPlay);
+const qbOf=pl=>pl.qb||QB;
+
+/* ---------- motion ---------- */
+function travel(t,v,delay){const te=Math.max(0,t-delay),A=0.5;return te<A?0.5*v/A*te*te:v*(te-A/2);}
+function along(path,s){
+  for(let i=0;i<path.length-1;i++){const [x0,y0]=path[i],[x1,y1]=path[i+1],L=Math.hypot(x1-x0,y1-y0);
+    if(s<=L||i===path.length-2){const u=L>0?Math.min(1,s/L):0;return{x:x0+(x1-x0)*u,y:y0+(y1-y0)*u};}s-=L;}
+  return{x:path[0][0],y:path[0][1]};
+}
+function pos(play,p,t){
+  const b=p.beh;
+  if(b.type==='track'){const f=b.f,n=f.length/3;if(t<=f[0])return{x:clampX(f[1]),y:f[2]};
+    for(let i=1;i<n;i++)if(t<=f[i*3]){const t0=f[i*3-3],u=(t-t0)/(f[i*3]-t0);return{x:clampX(lerp(f[i*3-2],f[i*3+1],u)),y:lerp(f[i*3-1],f[i*3+2],u)};}
+    if(n<2)return{x:clampX(f[1]),y:f[2]};const L=(n-1)*3,Q=(n-2)*3,dt=f[L]-f[Q]||.2,ex=Math.min(t-f[L],1.2);
+    return{x:clampX(f[L+1]+(f[L+1]-f[Q+1])/dt*ex),y:f[L+2]+(f[L+2]-f[Q+2])/dt*ex};}
+  if(b.type==='path'){const q=along(b.path,travel(t,b.speed,b.delay));return{x:clampX(q.x),y:q.y};}
+  const tp=pos(play,play.byId[b.target],Math.max(0,t-b.lag)),f=Math.min(1,t/b.settle);
+  return{x:clampX(tp.x+lerp(b.off0[0],b.off1[0],f)),y:tp.y+lerp(b.off0[1],b.off1[1],f)};
+}
+function linemen(t){
+  const push=Math.min(1,Math.min(t,4)/2.6),o=[];
+  [-2.8,-1.4,0,1.4,2.8].forEach(dx=>o.push({x:MID+dx,y:-1-2.1*push,side:'o'}));
+  [-3.4,-1.2,1.2,3.4].forEach(dx=>o.push({x:MID+dx*1.05,y:0.2-2.1*push,side:'d'}));
+  return o;
+}
+
+/* ---------- toy expected points ---------- */
+const DADJ={1:0,2:-.45,3:-1.05,4:-1.9},DK={1:.03,2:.05,3:.08,4:.1};
+function EP(down,d,ytg){if(ytg<=0)return 6.95;if(ytg>=100)return -2;return 6.3-.071*ytg+DADJ[down]-DK[down]*(Math.min(d,ytg)-10);}
+function epAfter(pl,kind,gain,spotY){
+  if(kind==='complete'||kind==='sack'){const ny=pl.ytg-gain;if(ny<=0)return 6.95;if(ny>=100)return -2;
+    if(gain>=pl.dist)return EP(1,Math.min(10,ny),ny);if(pl.down===4)return -EP(1,10,100-ny);return EP(pl.down+1,pl.dist-gain,ny);}
+  if(kind==='incomplete'){if(pl.down===4)return -EP(1,10,100-pl.ytg);return EP(pl.down+1,pl.dist,pl.ytg);}
+  const ourY=pl.ytg-spotY,opp=ourY<=0?80:100-ourY;return -EP(1,10,Math.max(1,Math.min(99,opp)));
+}
+
+/* ---------- throw model ---------- */
+function flightTime(d,type){return type==='fast'?0.05+d/23:0.15+d/18.5;}
+// reaction delay after the release: from which way he is facing (real tracking), else his fixed value
+function reactOf(pl,df,T){if(!df.o||!df.beh||!df.beh.f)return df.react;const f=df.beh.f;let k=0;for(let i=0;i<f.length;i+=3){if(f[i]<=T+1e-6)k=i/3;else break;}
+  const p=pos(pl,df,T),q=pos(pl,qbOf(pl),T),a=Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI,diff=Math.abs(((df.o[k]-a)%360+540)%360-180);
+  return .22+.4*diff/180;}
+function evaluate(pl,S,type,T0){
+  const T=T0==null?pl.T:T0,qb=pos(pl,qbOf(pl),T),d=dist(qb,S),fl=flightTime(d,type),tb=T+fl;
+  let best=null;
+  for(const r of pl.off){if(r.block)continue;
+    const rp=pos(pl,r,T+.15),nat=pos(pl,r,tb),adj=Math.min(3.5,.6*r.speed*Math.max(0,fl-.3)),routeGap=Math.max(0,dist(nat,S)-adj);
+    // or he reads the throw (~0.3 s), brakes if it is behind him, and works back to the ball
+    const p0=pos(pl,r,T),p1=pos(pl,r,T+.1),vx=(p1.x-p0.x)*10,vy=(p1.y-p0.y)*10,sp=Math.hypot(vx,vy);
+    const pr=pos(pl,r,T+.3),dx=S.x-pr.x,dy=S.y-pr.y,dd=Math.hypot(dx,dy),cosA=sp>.8&&dd>.3?(vx*dx+vy*dy)/(sp*dd):1;
+    const brake=sp/9*(1-cosA)/2,redirGap=Math.max(0,dd-r.speed*(.75+.25*cosA)*Math.max(0,tb-T-.3-brake));
+    const gap=Math.min(routeGap,redirGap),behind=redirGap<routeGap&&cosA<-.3;
+    if(!best||gap<best.gap-1e-6||(Math.abs(gap-best.gap)<1e-6&&dist(rp,S)<best.d))best={r,gap,d:dist(rp,S),behind,nat,v:{x:vx,y:vy,s:sp}};}
+  let gd=99,pd=null,lane=0,laneD=null,laneU=0;
+  for(const df of pl.def){if(df.rush)continue;
+    const rx=reactOf(pl,df,T),dp=pos(pl,df,T+rx),reach=df.sprint*.85*Math.max(0,tb-T-rx),g=Math.max(0,dist(dp,S)-reach);
+    if(g<gd){gd=g;pd=df;}
+    for(let u=.1;u<=.86;u+=.04){
+      const low=type==='fast'?(d<25||u<.35||u>.75):(u<.18);if(!low)continue;
+      const bp={x:lerp(qb.x,S.x,u),y:lerp(qb.y,S.y,u)},q=pos(pl,df,T+u*fl),pdist=dist(bp,q);
+      if(pdist<1.3&&dist(bp,S)>2.5){const risk=(1.3-pdist)/1.3*(type==='fast'?.7:.35);if(risk>lane){lane=risk;laneD=df;laneU=u;}}
+    }}
+  const gr=best.gap,rest=1-lane;let pC,pI,contest=0;
+  if(gr>2){pC=0;pI=rest*.5*sig((1-gd)*3);}
+  else{contest=sig((1.4-gd)*2.5);const base=.94-.2*gr-(best.behind?.06:0);pC=rest*base*(1-.8*contest);pI=rest*contest*(gd<.5?.16:.1);}
+  const pTipI=lane*.35;pI+=pTipI;const pInc=Math.max(0,1-pC-pI);
+  let yacE=1+2*Math.min(gd,6);if(gr>.6)yacE*=.6;if(best.behind)yacE*=.35;
+  const ahead=pl.def.filter(df=>!df.rush&&pos(pl,df,T).y>S.y-1&&Math.abs(pos(pl,df,T).x-S.x)<14);
+  if(!ahead.length&&gd>2.5)yacE=25;yacE=Math.min(yacE,30);
+  const before=EP(pl.down,pl.dist,pl.ytg);
+  const epC=epAfter(pl,'complete',S.y+yacE),epI=epAfter(pl,'int',0,S.y),epN=epAfter(pl,'incomplete');
+  const epa=pC*epC+pI*epI+pInc*epN-before;
+  let miss='wide';{const n=best.nat,vt=pos(pl,best.r,tb+.1),mx=(vt.x-n.x)*10,my=(vt.y-n.y)*10,ms=Math.hypot(mx,my);
+    const ux=ms>1.5?mx/ms:(S.x-qb.x)/(d||1),uy=ms>1.5?my/ms:(S.y-qb.y)/(d||1),along=(S.x-n.x)*ux+(S.y-n.y)*uy;
+    miss=along>1.2?'over':along<-1.2?(ms>1.5?'behind':'short'):'wide';}
+  return{miss,behind:best.behind,T,qb,S,type,fl,tb,r:best.r,gr,gd,pd,contest,lane,laneD,laneU,pC,pI,pTipI,pInc,yacE,epa,before};
+}
+function heatmap(pl){
+  const cells=[];let best=null;
+  for(let y=-4;y<=Math.min(YMAX-1,pl.ytg+9);y+=1.5)for(let x=1.5;x<W-1;x+=1.5){
+    const a=evaluate(pl,{x,y},'fast'),b=evaluate(pl,{x,y},'touch'),e=a.epa>b.epa?a:b;
+    cells.push({x,y,v:e.epa-(epAfter(pl,'incomplete')-e.before)});if(!best||e.epa>best.epa)best=e;}
+  return{cells,best};
+}
+if(typeof document==='undefined'){globalThis.QBM={PLAYS,reactOf,evaluate,heatmap,pos,EP,epAfter,prepPlay};}
+else{
+/* ---------- game state ---------- */
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),$=id=>document.getElementById(id);
+const S={pi:0,phase:'pre',t:0,type:'touch',hover:null,pend:null,plan:null,heat:null,showHeat:false,results:{},decideAt:0,mine:null,limit:3000,memoEnd:0,flash:null,advanceAt:0};
+const play=()=>PLAYS[S.pi];
+function fit(){const dpr=window.devicePixelRatio||1,w=cv.clientWidth;cv.width=Math.round(w*dpr);cv.height=Math.round(w*(YMAX-YMIN)/W*dpr);}
+const sx=x=>x/W*cv.width,sy=y=>(YMAX-y)/(YMAX-YMIN)*cv.height,k=()=>cv.width/W;
+function toField(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:YMAX-(e.clientY-r.top)/r.height*(YMAX-YMIN)};}
+function ordinal(n){return['','1st','2nd','3rd','4th'][n];}
+function fieldPos(ytg){const a=100-ytg;return a<50?'own '+a:a===50?'midfield':'opp '+(100-a);}
+const fmt=v=>(v>=0?'+':'')+v.toFixed(2);
+
+function loadPlay(i){
+  document.querySelectorAll('#diff button').forEach(b=>b.disabled=false);S.pi=i;S.phase='pre';S.t=0;S.plan=null;S.heat=null;S.showHeat=false;S.mine=null;S.pend=null;S.memoEnd=performance.now()+7000;S.advanceAt=0;
+  const p=play();$('dd').textContent=ordinal(p.down)+' & '+(p.dist>=p.ytg?'goal':p.dist);
+  $('fp').textContent=fieldPos(p.ytg)+' · '+p.clock;$('pname').textContent='Play '+(i+1)+' of '+PLAYS.length+': '+p.name+' · coverage hidden';
+  $('msg').textContent='Memorize the routes: they disappear at the snap. The ball is snapped automatically after 7 s, or press Snap now. The play then runs '+p.T.toFixed(1)+' s to the moment the real QB released the ball.';
+  $('snap').textContent='Snap now (space)';$('snap').disabled=false;$('away').disabled=true;banner('');score();
+}
+function banner(t){$('banner').textContent=t;}
+function score(){
+  const ks=Object.keys(S.results);const sum=ks.reduce((a,k2)=>a+S.results[k2],0);
+  $('score').innerHTML='Play '+(S.pi+1)+' of '+PLAYS.length+(ks.length?' · <span class="'+(sum>=0?'pos':'neg')+'">'+fmt(sum)+' EPA vs pros</span>':'');
+}
+function setType(t){S.type=t;$('tFast').setAttribute('aria-pressed',t==='fast');$('tTouch').setAttribute('aria-pressed',t==='touch');}
+
+function snap(){
+  if(S.phase==='pre'){S.phase='run';S.t=0;$('snap').disabled=true;$('msg').textContent='Watch the coverage develop…';}
+  else if(S.phase==='done'&&S.advanceAt){next();}
+}
+function next(){S.advanceAt=0;if(S.pi===PLAYS.length-1)S.results={};loadPlay((S.pi+1)%PLAYS.length);}
+function enterDecide(){
+  S.phase='decide';S.t=play().T;S.decideAt=performance.now();$('away').disabled=false;
+  banner('Release point: click where to throw');
+  $('msg').textContent=(S.limit?'You have '+S.limit/1000+' s or you get sacked. ':'')+'Click or tap a spot on the field. Your throw goes to the receiver who can get there first. Lead receivers to where they will be.';
+  document.querySelectorAll('#diff button').forEach(b=>b.disabled=true);
+}
+
+/* ---------- throw plan + animation ---------- */
+function makePlan(spot,type,forced,T){
+  const pl=play(),ev=evaluate(pl,spot,type,T);let kind,sub='',yac=0;
+  if(forced){kind=forced.kind;yac=forced.yac||0;}
+  else{const r=Math.random();
+    if(r<ev.pC){kind='complete';yac=Math.max(0,Math.round(ev.yacE*(.45+Math.random()*1.1)));}
+    else if(r<ev.pC+ev.pI){kind='int';sub=Math.random()*ev.pI<ev.pTipI?'tip':'';}
+    else{kind='incomplete';const q=Math.random();sub=ev.gr>2?'miss':q<ev.lane?'tip':q<ev.lane+ev.contest?'pbu':'drop';}}
+  if(sub==='tip'&&!ev.laneD)sub=kind==='int'?'':'pbu';
+  let gain=Math.round(spot.y)+yac;if(kind==='complete'&&gain>=pl.ytg){gain=pl.ytg;yac=pl.ytg-Math.round(spot.y);}
+  const epOut=(kind==='complete'?epAfter(pl,'complete',gain):kind==='int'?epAfter(pl,'int',0,spot.y):epAfter(pl,'incomplete'))-ev.before;
+  return{ev,kind,sub,yac,gain,epOut,spot,type,forced:!!forced,cur:{},tEnd:null};
+}
+function sackPlan(){const pl=play(),before=EP(pl.down,pl.dist,pl.ytg);return{sack:true,cur:{},kind:'sack',gain:-7,epOut:epAfter(pl,'sack',-7)-before,ev:{epa:epAfter(pl,'sack',-7)-before,pC:0,pI:0}};}
+function awayPlan(){const pl=play(),before=EP(pl.down,pl.dist,pl.ytg),v=epAfter(pl,'incomplete')-before;
+  return{away:true,kind:'incomplete',sub:'away',gain:0,epOut:v,ev:{epa:v,pC:0,pI:0,T:pl.T,qb:pos(pl,qbOf(pl),pl.T)},spot:{x:W+3,y:pos(pl,qbOf(pl),pl.T).y+6},cur:{}};}
+function startThrow(plan,isMine){
+  const pl=play(),T0=plan.ev&&plan.ev.T!=null?plan.ev.T:pl.T;
+  S.plan=plan;if(isMine)S.mine=plan;S.phase='throw';S.t=T0;banner('');$('away').disabled=true;
+  for(const p of [qbOf(pl),...pl.off,...pl.def])plan.cur[p.key||p.id]=pos(pl,p,T0);
+  if(plan.sack||plan.away){S.phase='done';finish();}
+}
+function step(dt){
+  const pl=play(),P=S.plan,ev=P.ev,t=S.t+dt;S.t=t;const sp=P.spot,cur=P.cur;
+  const caught=P.kind==='complete'&&t>=ev.tb, intd=P.kind==='int'&&t>=ev.tb;
+  const mv=(id,tg,v,stop=0)=>{const c=cur[id],dx=tg.x-c.x,dy=tg.y-c.y,L=Math.hypot(dx,dy);if(L>stop){const s=Math.min(v*dt,L-stop);c.x+=dx/L*s;c.y+=dy/L*s;}};
+  const yEnd={x:sp.x,y:Math.min(sp.y+P.yac,pl.ytg+1)};
+  for(const r of pl.off){
+    if(r.id===ev.r.id){
+      if(t<ev.T+.15)cur[r.id]=pos(pl,r,t);
+      else if(!caught){let v=r.speed;if(P.kind==='complete'){const need=dist(cur[r.id],sp)/Math.max(.05,ev.tb-t);v=Math.max(v,need);}mv(r.id,sp,v);}
+      else mv(r.id,yEnd,7.5);
+    }else if(t<ev.T+.9)cur[r.id]=pos(pl,r,t);
+  }
+  const carrier=caught?cur[ev.r.id]:null;
+  for(const df of pl.def){const id=df.key;
+    if(df.rush){if(t<ev.T+.6)cur[id]=pos(pl,df,t);continue;}
+    if(t<ev.T+reactOf(pl,df,ev.T)){cur[id]=pos(pl,df,t);continue;}
+    if(P.kind!=='complete'&&t>ev.tb+.5)continue;
+    const isPick=P.kind==='int'&&df===(P.sub==='tip'?ev.laneD:ev.pd);
+    if(isPick&&!intd){const tgt=P.sub==='tip'?tipPoint(P):sp;const need=dist(cur[id],tgt)/Math.max(.05,(P.sub==='tip'?ev.T+ev.laneU*ev.fl:ev.tb)-t);mv(id,tgt,Math.max(df.sprint*.85,need));}
+    else if(isPick&&intd)mv(id,{x:cur[id].x,y:cur[id].y-8},6);
+    else if(caught)mv(id,carrier,df.sprint*.9,.6);
+    else mv(id,sp,df.sprint*.85,.9);
+  }
+  if(!P.tEnd){
+    if(P.kind==='complete'&&caught&&dist(cur[ev.r.id],yEnd)<.2)P.tEnd=t+.5;
+    else if(P.kind!=='complete'&&t>ev.tb+1.1)P.tEnd=t;
+  }
+  if(P.tEnd&&t>=P.tEnd){S.phase='done';finish();}
+}
+function tipPoint(P){const ev=P.ev;return{x:lerp(ev.qb.x,P.spot.x,ev.laneU),y:lerp(ev.qb.y,P.spot.y,ev.laneU)};}
+function ballState(){
+  const P=S.plan,ev=P.ev,t=S.t;if(!P||P.sack||P.away)return null;
+  if(P.kind==='complete'&&t>=ev.tb)return{p:P.cur[ev.r.id],h:0};
+  if(P.kind==='int'&&t>=ev.tb&&P.sub!=='tip')return{p:P.cur[ev.pd.key],h:0};
+  let end=P.spot,tE=ev.tb;
+  if(P.sub==='tip'){end=tipPoint(P);tE=ev.T+ev.laneU*ev.fl;}
+  const u=Math.min(1,(t-ev.T)/(tE-ev.T)),d=dist(ev.qb,P.spot);
+  let p={x:lerp(ev.qb.x,end.x,u),y:lerp(ev.qb.y,end.y,u)};
+  if(u>=1){const extra=Math.min(1,(t-tE)/.5),dx=(P.spot.x-ev.qb.x)/d,dy=(P.spot.y-ev.qb.y)/d;
+    if(P.kind==='int'&&P.sub==='tip')return{p:P.cur[ev.laneD.key],h:0};
+    const off=P.sub==='miss'?3:P.sub==='pbu'?1.5:P.sub==='tip'?1.5:.8;p={x:p.x+dx*off*extra+(P.sub==='pbu'?dy*1.5*extra:0),y:p.y+dy*off*extra};}
+  return{p,h:u<1?Math.sin(Math.PI*u)*(P.type==='touch'?1:.45)*Math.min(1,d/20):0};
+}
+
+/* ---------- result panel ---------- */
+function describe(P){
+  const pl=play();
+  if(P.sack)return'Sacked · −7 yards';if(P.away)return'Thrown away';
+  if(P.kind==='int')return P.sub==='tip'?'Tipped and intercepted':'Intercepted';
+  if(P.kind==='incomplete')return{miss:'Incomplete · '+({over:'overthrown',behind:'thrown behind',short:'underthrown',wide:'out of reach'}[P.ev&&P.ev.miss]||'out of reach'),pbu:'Incomplete · broken up',tip:'Incomplete · batted at the line of scrimmage',drop:'Incomplete · dropped',away:'Thrown away'}[P.sub]||'Incomplete';
+  if(P.gain>=pl.ytg)return'Touchdown!';
+  return'Complete · '+(P.gain>=0?'+':'')+P.gain+' yards'+(P.gain>=pl.dist?' · first down':'');
+}
+function finish(){
+  const pl=play(),P=S.plan;$('snap').disabled=false;$('snap').textContent='Skip to next play (space)';
+  banner(describe(P));
+  if(!P.forced&&S.mine===P){
+    const pro=evaluate(pl,pl.pro.spot,pl.pro.type);S.pro=pro;
+    const proEP=epAfter(pl,pl.pro.result.kind,Math.round(pl.pro.spot.y)+pl.pro.result.yac,pl.pro.spot.y)-pro.before;
+    S.heat=S.heat||heatmap(pl);const mine=P.ev.epa,diff=mine-pro.epa;S.results[S.pi]=diff;score();
+    const last=S.pi===PLAYS.length-1,tot=Object.values(S.results).reduce((a,b)=>a+b,0);
+    S.flash={win:diff>=0,diff,at:performance.now(),text:describe(P),round:last?tot:null};S.advanceAt=performance.now()+(last?3400:2400);
+    const lvl=S.limit?S.limit/1000+' s clock':'unlimited time';const target=P.sack?'No throw':P.away?'Out of bounds':P.ev.r.id+', '+(P.type==='fast'?'fastball':'touch');
+    const odds=P.sack||P.away?'':P.ev.pC*100|0;
+    const bst=S.heat.best;
+    $('res').innerHTML=`<div class="tag">Last play: ${pl.name}</div><div class="big">${describe(P)}</div>
+      <div class="vs"><div><small>Your decision · ${lvl}</small><b class="${mine>=0?'pos':'neg'}">${fmt(mine)} EPA</b><small>${target}${odds!==''?` · ${odds}% to catch · ${(P.ev.pI*100).toFixed(0)}% interception`:''}</small></div>
+      <div><small>The pro's decision</small><b class="${pro.epa>=0?'pos':'neg'}">${fmt(pro.epa)} EPA</b><small>${pl.pro.target}, ${pl.pro.type==='fast'?'fastball':'touch'} · ${pro.pC*100|0}% to catch</small></div></div>
+      <p style="margin:0"><strong class="${diff>=0?'pos':'neg'}">${diff>=0?'You beat the pro by '+diff.toFixed(2):'The pro beat you by '+(-diff).toFixed(2)} expected points.</strong> What actually happened: ${pl.pro.text} (${fmt(proEP)} EPA). This throw's result was worth ${fmt(P.epOut)} EPA.</p>
+      <p class="note">Best window the model found: ${bst.r.id}, ${bst.type==='fast'?'fastball':'touch'}, ${fmt(bst.epa)} EPA.</p>
+      <p class="note"><strong>${pl.coverage}.</strong> ${pl.note.replace(/^[^.]*\.\s*/,'')}</p>
+`;
+    $('res').hidden=false;$('pname').textContent='Play '+(S.pi+1)+' of '+PLAYS.length+': '+pl.name+' · '+pl.coverage;
+    $('msg').textContent='Next play coming up…';
+  }else if(P.forced){banner('The pro: '+describe(P));}
+}
+
+/* ---------- drawing ---------- */
+function draw(){
+  const pl=play(),K=k();ctx.clearRect(0,0,cv.width,cv.height);
+  for(let y=Math.floor(YMIN/5)*5;y<YMAX;y+=5){const a=100-pl.ytg+y;ctx.fillStyle=(Math.floor(a/5)%2)?'#1f6a3b':'#236f40';ctx.fillRect(0,sy(y+5),cv.width,5*K+1);}
+  if(pl.ytg<YMAX){ctx.fillStyle='#173f6b';ctx.fillRect(0,0,cv.width,sy(pl.ytg));ctx.fillStyle='rgba(255,255,255,.55)';ctx.font=`700 ${2.4*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.textAlign='center';ctx.fillText('END ZONE',cv.width/2,sy(pl.ytg+4.6));}
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=Math.max(1,K*.12);ctx.fillStyle='rgba(255,255,255,.7)';ctx.font=`600 ${1.7*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let y=Math.ceil(YMIN);y<=Math.min(YMAX,pl.ytg);y++){const a=100-pl.ytg+y;
+    if(a%5===0){ctx.beginPath();ctx.moveTo(0,sy(y));ctx.lineTo(cv.width,sy(y));ctx.stroke();
+      if(a%10===0&&a>0&&a<100){const n=a<=50?a:100-a;ctx.fillText(n,sx(8),sy(y));ctx.fillText(n,sx(W-8),sy(y));}}
+    else for(const hx of [0.6,23.6,29.7,W-0.6]){ctx.beginPath();ctx.moveTo(sx(hx-.5),sy(y));ctx.lineTo(sx(hx+.5),sy(y));ctx.stroke();}}
+  ctx.lineWidth=K*.25;ctx.strokeStyle='#4aa3ff';ctx.beginPath();ctx.moveTo(0,sy(0));ctx.lineTo(cv.width,sy(0));ctx.stroke();
+  if(pl.dist<pl.ytg){ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--gold');ctx.beginPath();ctx.moveTo(0,sy(pl.dist));ctx.lineTo(cv.width,sy(pl.dist));ctx.stroke();}
+  if(S.showHeat&&S.heat){for(const c of S.heat.cells){const a=Math.min(.6,Math.abs(c.v)/2*.6);if(a<.04)continue;ctx.fillStyle=c.v>=0?`rgba(255,210,63,${a})`:`rgba(229,72,77,${a})`;ctx.fillRect(sx(c.x-.75),sy(c.y+.75),1.5*K,1.5*K);}
+    const mark=(p,t2)=>{ctx.fillStyle='#fff';ctx.font=`700 ${2*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.strokeStyle='#0d1411';ctx.lineWidth=K*.3;ctx.strokeText(t2,sx(p.x),sy(p.y));ctx.fillText(t2,sx(p.x),sy(p.y));};
+    mark(S.heat.best.S,'★');mark(pl.pro.spot,'P');if(S.mine&&S.mine.spot&&!S.mine.away)mark(S.mine.spot,'Y');}
+  const showRoutes=S.phase==='pre';
+  if(showRoutes){ctx.setLineDash([]);ctx.lineWidth=K*.22;ctx.strokeStyle=S.phase==='pre'?'rgba(255,255,255,.9)':'rgba(255,255,255,.35)';
+    for(const r of pl.off){if(r.block)continue;const pts=r.beh.path;ctx.beginPath();ctx.moveTo(sx(pts[0][0]),sy(pts[0][1]));
+      const lim=pts.map(q=>[q[0],Math.min(q[1],YMAX-1)]);lim.slice(1).forEach(q=>ctx.lineTo(sx(q[0]),sy(q[1])));ctx.stroke();
+      const a=lim[lim.length-1],b=lim[lim.length-2],ang=Math.atan2(sy(a[1])-sy(b[1]),sx(a[0])-sx(b[0]));
+      ctx.beginPath();ctx.moveTo(sx(a[0]),sy(a[1]));ctx.lineTo(sx(a[0])-K*1.1*Math.cos(ang-.5),sy(a[1])-K*1.1*Math.sin(ang-.5));ctx.moveTo(sx(a[0]),sy(a[1]));ctx.lineTo(sx(a[0])-K*1.1*Math.cos(ang+.5),sy(a[1])-K*1.1*Math.sin(ang+.5));ctx.stroke();}}
+  const t=S.t,P=S.phase==='throw'||S.phase==='done'?S.plan:null,live=P&&P.cur&&!P.sack&&!P.away;
+  const at=p=>live?P.cur[p.key||p.id]:pos(pl,p,t);
+  for(const m of linemen(t)){ctx.fillStyle=m.side==='o'?'#f2efe6':'#1b3d86';ctx.fillRect(sx(m.x)-K*.6,sy(m.y)-K*.45,K*1.2,K*.9);}
+  if(S.phase==='decide'&&S.hover){const ev=evaluate(pl,S.hover,S.type),q=pos(pl,QB,pl.T);
+    ctx.setLineDash([K*.6,K*.5]);ctx.lineWidth=K*.18;ctx.strokeStyle='#ffd23f';ctx.beginPath();ctx.moveTo(sx(q.x),sy(q.y));ctx.lineTo(sx(S.hover.x),sy(S.hover.y));ctx.stroke();ctx.setLineDash([]);
+    const rp=pos(pl,ev.r,pl.T);ctx.beginPath();ctx.arc(sx(rp.x),sy(rp.y),K*1.5,0,7);ctx.stroke();
+    ctx.beginPath();ctx.arc(sx(S.hover.x),sy(S.hover.y),K*.7,0,7);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font=`600 ${1.5*K}px Barlow,system-ui,sans-serif`;ctx.textAlign='left';ctx.fillText(ev.r.id+' · '+ev.fl.toFixed(1)+' s in the air',sx(Math.min(S.hover.x+1.2,W-13)),sy(S.hover.y+1.4));ctx.textAlign='center';}
+  if(live&&S.phase==='throw'){ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=K*.15;const x=P.spot;ctx.beginPath();ctx.moveTo(sx(x.x-.7),sy(x.y-.7));ctx.lineTo(sx(x.x+.7),sy(x.y+.7));ctx.moveTo(sx(x.x-.7),sy(x.y+.7));ctx.lineTo(sx(x.x+.7),sy(x.y-.7));ctx.stroke();}
+  const dot=(p,fill,ink,label,ring)=>{const X=sx(p.x),Y=sy(p.y);ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.arc(X+K*.15,Y+K*.2,K*.9,0,7);ctx.fill();
+    ctx.fillStyle=fill;ctx.beginPath();ctx.arc(X,Y,K*.9,0,7);ctx.fill();if(ring){ctx.strokeStyle='#ffd23f';ctx.lineWidth=K*.2;ctx.stroke();}
+    ctx.fillStyle=ink;ctx.font=`700 ${K*(label.length>2?.75:.95)}px "Barlow Condensed",system-ui,sans-serif`;ctx.fillText(label,X,Y+K*.05);};
+  for(const d of pl.def)dot(at(d),'#1b3d86','#fff',d.label);
+  for(const o of pl.off)dot(at(o),'#f2efe6','#a3161f',o.label,live&&o.id===P.ev.r.id);
+  dot(at(QB),'#f2efe6','#a3161f','QB');
+  if(live){const b=ballState();if(b){ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(sx(b.p.x),sy(b.p.y),K*.45,K*.3,0,0,7);ctx.fill();
+    const lift=b.h*K*2.2;ctx.fillStyle='#8a4b1f';ctx.beginPath();ctx.ellipse(sx(b.p.x),sy(b.p.y)-lift,K*(.5+b.h*.35),K*(.32+b.h*.22),-.6,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();}}
+  const badge=(label,val,fr,warn)=>{ctx.fillStyle='rgba(10,16,12,.8)';const bw=K*13,bh=K*3.4,bx=cv.width-bw-K,by=K;ctx.beginPath();ctx.roundRect(bx,by,bw,bh,K*.8);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(bx+K*.6,by+bh-K*.9,bw-K*1.2,K*.4);ctx.fillStyle=warn?'#ffd23f':'#7cc4ff';ctx.fillRect(bx+K*.6,by+bh-K*.9,(bw-K*1.2)*fr,K*.4);
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.font=`600 ${1.3*K}px Barlow,system-ui,sans-serif`;ctx.fillText(label,bx+K*.7,by+K*1.3);
+    ctx.textAlign='right';ctx.font=`700 ${2*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.fillText(val,bx+bw-K*.7,by+K*1.35);ctx.textAlign='center';};
+  if(S.phase==='pre'){const left=Math.max(0,(S.memoEnd-performance.now())/1000);badge('Snap in',Math.ceil(left)+' s',left/7,left<2);}
+  if(S.phase==='run'){const left=Math.max(0,pl.T-t),fr=left/pl.T;
+    ctx.fillStyle='rgba(10,16,12,.8)';const bw=K*13,bh=K*3.4,bx=cv.width-bw-K,by=K;ctx.beginPath();ctx.roundRect(bx,by,bw,bh,K*.8);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(bx+K*.6,by+bh-K*.9,bw-K*1.2,K*.4);
+    ctx.fillStyle=left<.6?'#ffd23f':'#7cc4ff';ctx.fillRect(bx+K*.6,by+bh-K*.9,(bw-K*1.2)*fr,K*.4);
+    ctx.fillStyle='#fff';ctx.textAlign='left';ctx.font=`600 ${1.3*K}px Barlow,system-ui,sans-serif`;ctx.fillText('Release in',bx+K*.7,by+K*1.3);
+    ctx.textAlign='right';ctx.font=`700 ${2*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.fillText(left.toFixed(1)+' s',bx+bw-K*.7,by+K*1.35);ctx.textAlign='center';}
+  if(S.flash){const age=(performance.now()-S.flash.at)/1000,F=S.flash;
+    if(age<2.4){const fade=age<.15?age/.15:age>2?(2.4-age)/.4:1,pop=age<.25?.6+.4*Math.sin(age/.25*Math.PI/2)*1.1:1;
+      ctx.save();ctx.globalAlpha=fade;ctx.fillStyle=F.win?'rgba(18,110,60,.82)':'rgba(150,20,30,.82)';ctx.fillRect(0,0,cv.width,cv.height);
+      ctx.translate(cv.width/2,cv.height*.42);ctx.scale(pop,pop);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.font=`700 ${Math.min(9*K,cv.width/5.2)}px "Barlow Condensed",system-ui,sans-serif`;ctx.fillText(F.win?'BIG WIN':'BIG LOSS',0,0);
+      ctx.font=`700 ${2.6*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.fillText((F.win?'You beat the pro by ':'The pro beat you by ')+Math.abs(F.diff).toFixed(2)+' EPA',0,5.6*K);
+      ctx.font=`600 ${1.8*K}px Barlow,system-ui,sans-serif`;ctx.fillText(F.text,0,8.6*K);
+      if(F.round!==null){ctx.font=`700 ${2.2*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.fillText('Round total: '+fmt(F.round)+' EPA vs the pros',0,12*K);}
+      ctx.restore();}else S.flash=null;}
+  if(S.phase==='decide'){ctx.fillStyle='rgba(0,0,0,.12)';ctx.fillRect(0,0,cv.width,cv.height);
+    if(S.limit){const left=Math.max(0,1-(performance.now()-S.decideAt)/S.limit);ctx.fillStyle=left>.3?'#ffd23f':'#e5484d';ctx.fillRect(0,cv.height-K*.9,cv.width*left,K*.9);ctx.fillStyle='#fff';ctx.font=`700 ${1.8*K}px "Barlow Condensed",system-ui,sans-serif`;ctx.textAlign='right';ctx.fillText((left*S.limit/1000).toFixed(1)+' s',cv.width-K,cv.height-K*2.2);ctx.textAlign='center';}}
+}
+
+/* ---------- loop + input ---------- */
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;const pl=play();
+  if(S.phase==='pre'&&now>=S.memoEnd)snap();
+  else if(S.phase==='done'&&S.advanceAt&&now>=S.advanceAt)next();
+  if(S.phase==='run'){S.t+=dt;if(S.t>=pl.T)enterDecide();}
+  else if(S.phase==='decide'&&S.limit&&now-S.decideAt>S.limit){S.pend=null;S.hover=null;startThrow(sackPlan(),true);}
+  else if(S.phase==='throw'){let r=dt;while(r>1e-4&&S.phase==='throw'){const h=Math.min(r,1/120);step(h);r-=h;}}
+  draw();requestAnimationFrame(loop);}
+cv.addEventListener('pointermove',e=>{if(S.phase==='decide'&&e.pointerType!=='touch')S.hover=toField(e);});
+cv.addEventListener('pointerleave',()=>{if(S.pend===null)S.hover=null;});
+cv.addEventListener('pointerdown',e=>{
+  if(S.phase==='pre'){snap();return;}if(S.phase!=='decide')return;const f=toField(e);
+  if(e.pointerType==='touch'&&(!S.pend||dist(S.pend,f)>2)){S.pend=f;S.hover=f;banner('Tap again to throw');return;}
+  S.hover=null;S.pend=null;startThrow(makePlan(f,S.type,null),true);});
+const setDiff=ms=>{if(S.phase==='decide')return;S.limit=ms;document.querySelectorAll('#diff button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.ms===ms));};
+document.querySelectorAll('#diff button').forEach(b=>b.onclick=()=>setDiff(+b.dataset.ms));
+$('snap').onclick=snap;$('tFast').onclick=()=>setType('fast');$('tTouch').onclick=()=>setType('touch');
+$('away').onclick=()=>{if(S.phase==='decide')startThrow(awayPlan(),true);};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();snap();}else if(e.key==='f'||e.key==='F')setType('fast');else if(e.key==='t'||e.key==='T')setType('touch');});
+new ResizeObserver(fit).observe(cv);fit();loadPlay(0);requestAnimationFrame(loop);
+}
+}
+</script>
+</body>
+</html>

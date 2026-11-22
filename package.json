@@ -1,0 +1,2 @@
+{ "name": "beat-the-pro", "private": true, "scripts": { "build": "python3 build.py" },
+  "devDependencies": { "three": "0.160.0", "playwright": "^1.48.0" } }
