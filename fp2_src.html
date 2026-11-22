@@ -1062,7 +1062,7 @@ const G=10.7,H0=2.0,H1=1.4;const ARC={fast:.45,touch:.5};const hAt=(u,fl,type)=>
 /* ======================= LOOK ZONES (1 left, 2 middle, 3 right) ======================= */
 const ZONES=[{name:'Left',x:9},{name:'Middle',x:MID},{name:'Right',x:W-9}];
 PLAYS.forEach(p=>{p.prog=ZONES;});
-function buildProg(pl){$('prog').innerHTML='<span class="pl">Look</span>'+ZONES.map((z,i)=>`<button data-i="${i}" aria-label="Look ${z.name.toLowerCase()}"><b>${kn('look'+i)}</b>${z.name}</button>`).join('');
+function buildProg(pl){$('prog').innerHTML='<span class="pl">Look</span>'+ZONES.map((z,i)=>`<button data-i="${i}" aria-label="Look ${z.name.toLowerCase()}">${coarse?'':`<b>${kn('look'+i)}</b>`}${z.name}</button>`).join('');
   $('prog').querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();setRead(+b.dataset.i);});}
 function setRead(i){if(S.phase!=='run'||i<0||i>=ZONES.length)return;S.read=i;
   $('prog').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.i===i));}
@@ -1156,14 +1156,14 @@ function enterReview(pl,P,pro){const qb=pos(pl,qbOf(pl),pl.T),pts=[qb,pl.pro.spo
   $('legend').innerHTML=`<div>${sw('#ffd23f')} <b>You</b> ${mineThrow?`${lab(P.ev.r)}, ${P.type==='fast'?'fastball':'touch'}${earlyBy(P)?' · '+earlyBy(P).toFixed(1)+' s early':''} · ${P.ev.pC*100|0}% catch · ${fmt(P.ev.epa)} EPA`:(P.sack?'sacked, no throw':'threw it away')}
 </div><div>${sw('#7cc4ff')} <b>${pl.real?pl.qb.name:'Pro'}</b> ${lab(proR)}, ${pl.pro.type==='fast'?'fastball':'touch'} · ${pro.pC*100|0}% catch · ${fmt(pro.epa)} EPA</div>`+
     (W?`<div>${sw('#4ade80')} <b>Best read</b> ${W.found?'— yours':W.short}</div><p class="why">${W.why}</p>`:'');
-  $('legend').insertAdjacentHTML('beforeend',`<div class="rb"><button id="rpMine" ${mineThrow?'':'disabled'}>▶ Your throw (${kn('repMine')})</button><button id="rpPro">▶ ${pl.real?pl.qb.name.split(' ').pop()+'\'s':'Pro\'s'} throw (${kn('repPro')})</button>${S.round&&S.round.kind==='daily'?'':'<button id="rpAgain">↺ Run it back</button>'}</div>`);
+  $('legend').insertAdjacentHTML('beforeend',`<div class="rb"><button id="rpMine" ${mineThrow?'':'disabled'}>▶ Your throw${kp('repMine')}</button><button id="rpPro">▶ ${pl.real?pl.qb.name.split(' ').pop()+'\'s':'Pro\'s'} throw${kp('repPro')}</button>${S.round&&S.round.kind==='daily'?'':'<button id="rpAgain">↺ Run it back</button>'}</div>`);
   $('rpMine').onclick=()=>replay('mine');$('rpPro').onclick=()=>replay('pro');if($('rpAgain'))$('rpAgain').onclick=()=>{S.advanceAt=0;loadPlay(S.pi);};
   $('legend').hidden=false;if(pl.real)$('reveal').classList.add('side');}
 // after a play nothing moves on by itself: a prompt in the middle of the screen waits for Space (or a tap on it)
 function showNext(){if(isTut()||S.phase!=='done'||!S.round)return;const last=S.round.i>=S.round.plays.length-1;
   $('nextHint').innerHTML=(coarse?'Tap here':'Press <kbd>'+kn('snap')+'</kbd>')+(last?' to see your results':' for the next play');$('nextHint').hidden=false;}
 const hideNext=()=>{$('nextHint').hidden=true;};
-function holdHere(){S.advanceAt=0;$('snap').textContent='Next play ('+kn('snap')+')';$('snap').disabled=false;}
+function holdHere(){S.advanceAt=0;$('snap').textContent='Next play'+kp('snap');$('snap').disabled=false;}
 function replay(which){const pl=play();if(S.phase!=='done')return;const M=S.mine;if(which==='mine'&&(!M||M.sack||M.away))return;
   holdHere();hideNext();clearTimeout(S.revealTO);hideReview();$('reveal').hidden=true;$('res').hidden=true;
   const P=which==='pro'?makePlan(pl.pro.spot,pl.pro.type,pl.pro.result):makePlan(M.spot,M.type,{kind:M.kind,yac:M.yac},M.ev.T);
@@ -1224,8 +1224,8 @@ const K=t=>`<kbd>${t}</kbd>`,isTut=()=>!!(S.round&&S.round.kind==='tutorial');
 function tutCard(step){const pl=play(),m=pl.meta||{},qb=pl.real?pl.qb.name:'the quarterback',last=qb.split(' ').pop(),tap=coarse?'Tap':'Click',li=(n,h)=>`<li data-n="${n}"><span>${h}</span></li>`;
   const card={
     pre:['Tutorial · before the snap','This is a real NFL play',`<ol>${li(1,`<b>Real game data.</b> Every player is exactly where he was on the field: ${esc(qb)}, ${esc(m.offName||'')} vs ${esc(m.defName||'')}, ${esc(m.date||'')}. Tracked by NFL Next Gen Stats.`)}
-      ${li(2,`<b>At the snap you become the quarterback.</b> You’re transported into his first-person view, and the route lines disappear, so memorize them now. ${coarse?'Tap Left, Middle or Right to look around.':`Press ${K(kn('look0'))} ${K(kn('look1'))} ${K(kn('look2'))} to look left, middle or right, or hold ${K(kn('panL'))}${K(kn('panR'))}${K(kn('panU'))}${K(kn('panD'))} to look around.`}`)}</ol>`,'Got it, show me the routes'],
-    decide:['Tutorial · the freeze','Slow motion. This is when he threw it.',`<ol>${li(3,`<b>The game slows to a freeze at the exact moment ${esc(qb)} let the ball go.</b> Now it’s your call: ${tap.toLowerCase()} the spot on the field where your pass should land. Lead the receiver and aim where he’s going, not where he is. The <b style="color:#4ade80">green ring</b> marks the best spot on this play. ${coarse?'':K(kn('fast'))+' fastball, '+K(kn('touch'))+' touch.'}`)}</ol>`,'Got it, let me throw'],
+      ${li(2,`<b>At the snap you become the quarterback.</b> You’re transported into his first-person view, and the route lines disappear, so memorize them now. ${coarse?'Swipe left or right to look around, or tap Left, Middle or Right.':`Press ${K(kn('look0'))} ${K(kn('look1'))} ${K(kn('look2'))} to look left, middle or right, or hold ${K(kn('panL'))}${K(kn('panR'))}${K(kn('panU'))}${K(kn('panD'))} to look around.`}`)}</ol>`,'Got it, show me the routes'],
+    decide:['Tutorial · the freeze','Slow motion. This is when he threw it.',`<ol>${li(3,`<b>The game slows to a freeze at the exact moment ${esc(qb)} let the ball go.</b> Now it’s your call: ${coarse?'press the field, drag to the spot where your pass should land, and let go':'click the spot on the field where your pass should land'}. Lead the receiver and aim where he’s going, not where he is. The <b style="color:#4ade80">green ring</b> marks the best spot on this play. ${coarse?'':K(kn('fast'))+' fastball, '+K(kn('touch'))+' touch.'}`)}</ol>`,'Got it, let me throw'],
     done:null}[step];
   if(step==='done'){const r=S.round.res[S.round.i]||{},won=r.diff>=0;
     card_=['Tutorial · your score',won?'You beat '+last+'.':last+' wins this one.',`<ol>${li(4,`<b>You’re scored on EPA (expected points added) against the pro’s real throw.</b> You: <b class="${r.mine>=0?'pos':'neg'}">${fmt(r.mine||0)}</b> · ${esc(last)}: <b class="${r.pro>=0?'pos':'neg'}">${fmt(r.pro||0)}</b>. Gold is your throw, blue is his, green was the best read.`)}</ol><p>Today’s 6 is six real plays, the same for everyone. <b>Can you do it?</b></p>`,'Play today’s 6'];
@@ -1356,7 +1356,7 @@ function loadPlay(i){
   clearTimeout(S.revealTO);$('reveal').hidden=true;hideReview();const p=play();buildField(p);buildActors(p);buildArrows(p);showArrows(p,false);buildProg(p);S.read=-1;$('prog').hidden=true;$('prog').classList.remove('locked');
   $('dd').textContent=ordinal(p.down)+' & '+(p.dist>=p.ytg?'goal':p.dist);$('fp').textContent=fieldPos(p.ytg)+' · '+p.clock;
   $('pname').textContent=(S.round?roundLabel()+' · ':'')+p.name;
-  $('snap').textContent='Snap now ('+kn('snap')+')';$('snap').disabled=false;$('away').disabled=true;banner('Memorize the routes');
+  $('snap').textContent='Snap now'+kp('snap');$('snap').disabled=false;$('away').disabled=true;banner('Memorize the routes');
   ANN.stop();AU.unslow();S.dbSaid=false;clearTimeout(S.preTO);if(!(S.round&&S.round.i===0&&ANN.has('round-'+S.round.kind)))S.preTO=setTimeout(()=>{if(S.phase==='pre'&&S.pi===i&&!S.cadence&&!S.paused)ANN.say(presnapKey(p));},900);
   $('help').textContent='The routes disappear at the snap'+(innerWidth<innerHeight?' · turn your phone sideways for a wider view':'');score();AU.level(.35,1);
   S.tutCard=null;$('tut').hidden=true;hideNext();if(isTut())tutCard('pre');
@@ -1369,7 +1369,7 @@ function snap(){if(S.tutCard)return;
     S.phase='run';S.t=0;S.yaw=0;$('snap').disabled=true;document.body.classList.add('playing');banner('');
     S.hintZone=null;if(S.round&&S.round.kind==='tutorial'&&TUT[0].hint){S.heat=heatmap(play());const bx=S.heat.best.S.x;S.hintZone=ZONES.reduce((bi,z,i)=>Math.abs(z.x-bx)<Math.abs(ZONES[bi].x-bx)?i:bi,0);}
     if(S.routes){routeGroup.traverse(m=>{if(m.material)m.material.opacity=.42;});showArrows(play(),true);}else scene.remove(routeGroup);
-    $('help').textContent=coarse?'Tap Left, Middle or Right to move your eyes':'Press '+kn('look0')+' / '+kn('look1')+' / '+kn('look2')+' to look left, middle, right, or hold '+[kn('panL'),kn('panR'),kn('panU'),kn('panD')].join(' ')+' to look around · click to throw early';$('prog').hidden=false;S.read=-1;setRead(1);
+    $('help').textContent=coarse?'Swipe to look around · hold, drag and let go to throw early':'Press '+kn('look0')+' / '+kn('look1')+' / '+kn('look2')+' to look left, middle, right, or hold '+[kn('panL'),kn('panR'),kn('panU'),kn('panD')].join(' ')+' to look around · click to throw early';$('prog').hidden=false;S.read=-1;setRead(1);
     AU.thud(.12,.9);AU.thud(.3,.5);AU.level(.55,.25);setTimeout(()=>{if(S.phase==='run'||S.phase==='decide')AU.level(.8,1.2);},500);S.shake=.25;}
   else if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn))skipCine();
   else if(S.phase==='done')next();
@@ -1378,7 +1378,7 @@ function snap(){if(S.tutCard)return;
 function next(){S.advanceAt=0;hideNext();if(S.round){if(S.round.i<S.round.plays.length-1){S.round.i++;loadPlay(S.round.plays[S.round.i]);}else showResults();return;}loadPlay((S.pi+1)%PLAYS.length);}
 function enterDecide(){AU.slowmo();
   S.phase='decide';S.t=play().T;S.decideAt=performance.now();$('prog').classList.add('locked');showArrows(play(),true);$('help').textContent='';S.lastBeat=0;$('away').disabled=false;AU.level(.62,.4);
-  banner(coarse?'Tap a spot, then tap again to throw':'');
+  banner(coarse?'Press the field, drag to aim, let go to throw':'');
   if(S.round&&S.round.kind==='tutorial'&&TUT[0].hint){S.heat=S.heat||heatmap(play());const b=S.heat.best;hintRing.position.copy(V(b.S.x,b.S.y,.06));hintRing.visible=true;setType(b.type);}
   document.querySelectorAll('#diff button').forEach(b=>b.disabled=true);
   if(isTut())tutCard('decide');
@@ -1418,7 +1418,7 @@ function skipCine(){if(S.phase==='throw'){let n=0;while(S.phase==='throw'&&n++<3
 function finishReal(){
   document.body.classList.remove('playing');
   if(S.plan&&S.plan.replay){afterReplay();return;}
-  const pl=play(),P=S.plan;$('snap').disabled=false;$('snap').textContent='Skip ('+kn('snap')+')';banner('');$('help').textContent='';
+  const pl=play(),P=S.plan;$('snap').disabled=false;$('snap').textContent='Skip'+kp('snap');banner('');$('help').textContent='';
   const pro=evaluate(pl,pl.pro.spot,pl.pro.type);
   const proEP=epAfter(pl,pl.pro.result.kind,Math.round(pl.pro.spot.y)+pl.pro.result.yac,pl.pro.spot.y)-pro.before;
   S.heat=S.heat||heatmap(pl);const mine=P.ev.epa,diff=mine-pro.epa;S.lastPro=pro;S.lastMine=mine;S.results[S.pi]=diff;score();
@@ -1572,19 +1572,40 @@ const KB_DEF=Object.fromEntries(KB_ACT.map(a=>[a[0],a[2]]));
 let KB=Object.assign({},KB_DEF);try{const v=JSON.parse(localStorage.getItem('qbcam.keys')||'null');if(v&&typeof v==='object')for(const k in KB_DEF)if(typeof v[k]==='string')KB[k]=v[k];}catch(e){}
 const normKey=e=>e.key.length===1?e.key.toLowerCase():e.key;
 const keyName=k=>k===' '?'Space':{ArrowLeft:'←',ArrowRight:'→',ArrowUp:'↑',ArrowDown:'↓'}[k]||(k.length===1?k.toUpperCase():k);
-const kn=a=>keyName(KB[a]);
+const kn=a=>keyName(KB[a]),kp=a=>coarse?'':' ('+kn(a)+')';   // kp: " (key)" after a button label, nothing on touch screens
 const actOf=k=>{for(const a in KB)if(KB[a]===k)return a;return null;};
 const held=a=>!!keys[KB[a]];
 cv.addEventListener('pointermove',e=>{S.ptr={x:e.clientX,y:e.clientY,type:e.pointerType};
 });
 cv.addEventListener('pointerleave',()=>{if(!down)S.ptr=null;});
-cv.addEventListener('pointerdown',e=>{down={x0:e.clientX,y0:e.clientY,lx:e.clientX};});
-cv.addEventListener('pointerup',e=>{const d=down;down=null;if(!d||Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>10)return;
+/* ---------- touch: swipe to look around; press, drag and release to throw ----------
+   During the play a quick swipe turns your head; holding still for a moment picks up the ball (early throw), then drag to aim and let go.
+   At the freeze the view is locked, so any press aims straight away. The aim point sits a little above the finger so you can see it;
+   drag off the field and let go to cancel. Mouse keeps click-to-throw. */
+const TOUCH_UP=56,HOLD_MS=230,LOOK_SENS=2.4,isTouch=e=>e.pointerType!=='mouse';
+function touchAim(x,y){const a=aimPick(x,y-TOUCH_UP);S.aim=a?a.f:null;S.aimSnap=null;return a;}
+function clearRead(){if(S.read>=0){S.read=-1;$('prog').querySelectorAll('button').forEach(b=>b.classList.remove('on'));}}
+cv.addEventListener('pointerdown',e=>{down={x0:e.clientX,y0:e.clientY,lx:e.clientX,ly:e.clientY,mode:null};if(!isTouch(e))return;
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  if(S.phase==='decide'){down.mode='aim';touchAim(e.clientX,e.clientY);}
+  else if(S.phase==='run'){const d=down;d.holdTO=setTimeout(()=>{if(down!==d||d.mode||S.phase!=='run')return;if(!canEarly()){S.nudge=performance.now();return;}
+    d.mode='aim';touchAim(d.lx,d.ly);if(navigator.vibrate)try{navigator.vibrate(12);}catch(_){}},HOLD_MS);}});
+cv.addEventListener('pointermove',e=>{const d=down;if(!d||!isTouch(e))return;const dx=e.clientX-d.lx;d.lx=e.clientX;d.ly=e.clientY;
+  if(d.mode==='aim'){touchAim(e.clientX,e.clientY);return;}
+  if(S.phase==='run'&&(d.mode==='look'||Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>12)){if(d.mode!=='look'){d.mode='look';clearTimeout(d.holdTO);clearRead();}
+    S.yaw=Math.max(-1.45,Math.min(1.45,S.yaw-dx*LOOK_SENS/Math.max(320,innerWidth)));}});
+cv.addEventListener('pointercancel',()=>{if(down)clearTimeout(down.holdTO);down=null;S.aim=null;});
+cv.addEventListener('pointerup',e=>{if(!isTouch(e))return;const d=down;down=null;if(!d)return;clearTimeout(d.holdTO);
+  if(d.mode==='aim'){const a=touchAim(e.clientX,e.clientY);S.aim=null;if(!a){banner('Cancelled · drag onto the field to throw');return;}
+    if(S.phase==='run')startThrow(makePlan(a.f,S.type,null,S.t),true);else if(S.phase==='decide')startThrow(makePlan(a.f,S.type,null),true);return;}
+  if(d.mode==='look')return;
+  if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}
+  if(S.phase==='run')S.nudge=performance.now();});
+cv.addEventListener('pointerup',e=>{if(isTouch(e))return;const d=down;down=null;if(!d||Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>10)return;
   if(S.phase==='run'){if(!canEarly()){S.nudge=performance.now();return;}
     const a=aimPick(e.clientX,e.clientY);if(!a)return;S.pend=null;S.aim=null;startThrow(makePlan(a.f,S.type,null,S.t),true);return;}
   if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}if(S.phase!=='decide')return;
   const a=aimPick(e.clientX,e.clientY);if(!a)return;const f=a.f;
-  if(e.pointerType!=='mouse'&&(!S.pend||dist(S.pend,f)>2.5)){S.pend=f;S.aim=f;S.aimSnap=a.snap;banner('Tap again to throw');return;}
   S.pend=null;S.aim=null;startThrow(makePlan(f,S.type,null),true);});
 document.addEventListener('keydown',e=>{const k=normKey(e);keys[k]=true;if(S.phase==='idle')return;const a=actOf(k);if(!a)return;
   if(a==='snap'){e.preventDefault();snap();}else if(a==='fast')setType('fast');else if(a==='touch')setType('touch');else if(a==='mute')muteBtn();
@@ -1691,9 +1712,9 @@ function renderKb(){$('kbList').innerHTML=KB_ACT.map(([a,lab])=>`<div class="kbR
   $('kbList').querySelectorAll('button').forEach(b=>b.onclick=()=>{KBW=KBW===b.dataset.a?null:b.dataset.a;renderKb();const w=$('kbList').querySelector('.wait');if(w)w.focus({preventScroll:true});});}
 function openKb(){kbFrom=document.activeElement;KBW=null;renderKb();$('keysSheet').hidden=false;setTimeout(()=>$('kbDone').focus({preventScroll:true}),30);}
 function closeKb(){KBW=null;$('keysSheet').hidden=true;if(kbFrom&&kbFrom.focus)kbFrom.focus({preventScroll:true});}
-function kbLabels(){$('tFast').textContent='Fastball ('+kn('fast')+')';$('tTouch').textContent='Touch ('+kn('touch')+')';$('skipHint').textContent=kn('snap')+' or tap to skip';
-  $('snap').textContent=$('snap').textContent.replace(/\([^)]*\)$/,'('+kn('snap')+')');$('prog').querySelectorAll('button b').forEach((b,i)=>b.textContent=kn('look'+i));
-  const rm=$('rpMine'),rp=$('rpPro');if(rm)rm.textContent=rm.textContent.replace(/\([^)]*\)$/,'('+kn('repMine')+')');if(rp)rp.textContent=rp.textContent.replace(/\([^)]*\)$/,'('+kn('repPro')+')');
+function kbLabels(){$('tFast').textContent='Fastball'+kp('fast');$('tTouch').textContent='Touch'+kp('touch');$('skipHint').textContent=coarse?'Tap to skip':kn('snap')+' or tap to skip';
+  if(!coarse)$('snap').textContent=$('snap').textContent.replace(/\([^)]*\)$/,'('+kn('snap')+')');$('prog').querySelectorAll('button b').forEach((b,i)=>b.textContent=kn('look'+i));
+  const rm=$('rpMine'),rp=$('rpPro');if(!coarse&&rm)rm.textContent=rm.textContent.replace(/\([^)]*\)$/,'('+kn('repMine')+')');if(!coarse&&rp)rp.textContent=rp.textContent.replace(/\([^)]*\)$/,'('+kn('repPro')+')');
   if(!$('nextHint').hidden)showNext();}
 $('keysPick').onclick=openKb;$('pzKeys').onclick=openKb;$('kbClose').onclick=closeKb;$('kbDone').onclick=closeKb;
 $('kbReset').onclick=()=>{KB=Object.assign({},KB_DEF);try{localStorage.removeItem('qbcam.keys');}catch(e){}KBW=null;kbLabels();renderKb();};
@@ -1816,7 +1837,7 @@ function update(dt,sdt,now){
   if(S.phase==='decide'||(S.phase==='run'&&S.routes))drawArrows(pl);
   // aiming
   const aiming=S.phase==='decide'||canEarly(),aT=S.phase==='run'?S.t:pl.T;
-  let aimF=null,aimS=null;if(aiming){if(S.phase==='decide'&&S.aim){aimF=S.aim;aimS=S.aimSnap;}else if(S.ptr&&S.ptr.type==='mouse'){const a=aimPick(S.ptr.x,S.ptr.y);if(a){aimF=a.f;aimS=a.snap;}}}
+  let aimF=null,aimS=null;if(aiming){if(S.aim){aimF=S.aim;aimS=S.aimSnap;}else if(S.ptr&&S.ptr.type==='mouse'){const a=aimPick(S.ptr.x,S.ptr.y);if(a){aimF=a.f;aimS=a.snap;}}}
   pathDots.visible=ghost.visible=aimShadow.visible=arcDots.visible=arcShade.visible=arcEnd.visible=false;$('traj').classList.remove('on');
   reticle.visible=tgtRing.visible=!!aimF;$('cross').style.display=aiming&&!aimF?'block':'none';
   if(!aimF)hideHoops();
@@ -1833,9 +1854,9 @@ function update(dt,sdt,now){
   // HUD clocks: one big explicit countdown in the centre
   {const cd=$('cd');let mode='',lab='',big='',sub='',fr=-1;
     if(S.phase==='pre'){const left=Math.max(0,(S.memoEnd-now)/1000);mode=left<=3.2?'count':'pre';lab='Snap in';big=String(Math.max(1,Math.ceil(left)));sub=left<=3.2?'Get ready…':'Memorize the routes';fr=left/7;}
-    else if(S.phase==='run'){const left=Math.max(0,pl.T-S.t);mode='wait';lab='Pro throws in';big=left.toFixed(1)+' s';sub=!canEarly()?(S.nudge&&now-S.nudge<900?'Finish your drop first':'Taking the drop…'):(coarse?'Tap to throw early, or wait for the freeze':'Click to throw early, or wait for the freeze');fr=left/pl.T;}
-    else if(S.phase==='decide'){const el=now-S.decideAt;if(S.limit){const left=Math.max(0,S.limit-el)/1000;mode=el<700?'go':left<1?'urgent':'live';lab=el<700?'':'Throw now';big=el<700?'Throw now!':left.toFixed(1)+' s';sub=el<700?'Click the spot on the field where the ball should land':'left to throw, or you’re sacked';fr=left/(S.limit/1000);}
-      else{mode=el<700?'go':'live';lab=el<700?'':'Throw now';big=el<700?'Throw now!':'No clock';sub='Click the spot on the field where the ball should land';}}
+    else if(S.phase==='run'){const left=Math.max(0,pl.T-S.t);mode='wait';lab='Pro throws in';big=left.toFixed(1)+' s';sub=!canEarly()?(S.nudge&&now-S.nudge<900?'Finish your drop first':'Taking the drop…'):(coarse?(S.nudge&&performance.now()-S.nudge<1500?'Hold your finger down, then drag and let go':'Hold, drag, let go to throw early · swipe to look'):'Click to throw early, or wait for the freeze');fr=left/pl.T;}
+    else if(S.phase==='decide'){const el=now-S.decideAt;if(S.limit){const left=Math.max(0,S.limit-el)/1000;mode=el<700?'go':left<1?'urgent':'live';lab=el<700?'':'Throw now';big=el<700?'Throw now!':left.toFixed(1)+' s';sub=el<700?''+(coarse?'Press, drag to the spot, let go':'Click the spot on the field where the ball should land'):'left to throw, or you’re sacked';fr=left/(S.limit/1000);}
+      else{mode=el<700?'go':'live';lab=el<700?'':'Throw now';big=el<700?'Throw now!':'No clock';sub=''+(coarse?'Press, drag to the spot, let go':'Click the spot on the field where the ball should land');}}
     cd.dataset.mode=mode;if(mode){cd.querySelector('small').textContent=lab;const bEl=cd.querySelector('b');if(bEl.textContent!==big){bEl.textContent=big;bEl.classList.remove('pop');if(mode==='count'){void bEl.offsetWidth;bEl.classList.add('pop');}}cd.querySelector('span').textContent=sub;cd.querySelector('s').style.width=(fr<0?0:fr*100)+'%';}}
   const badge=$('badge');let label='',val='',fr=0,warn=false;
   if(S.phase==='pre'){const left=Math.max(0,(S.memoEnd-now)/1000);label='Snap in';val=Math.ceil(left)+' s';fr=left/7;warn=left<2;}
