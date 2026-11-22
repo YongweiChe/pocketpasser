@@ -68,6 +68,19 @@ out_embed = out.replace('/*CADENCE*/', cad_js(True), 1).replace('/*ANNOUNCER*/',
 out = out.replace('/*CADENCE*/', cad_js(False), 1).replace('/*ANNOUNCER*/', ann_js(False), 1).replace('/*MUSIC*/', music_js(False), 1)
 open(p('fp2.html'), 'w').write(out)
 
+# public/: what the website serves (Render publishes this folder). Only shareable assets: the game, the highlight plays,
+# the announcer clips and the home music. Never the Big Data Bowl plays or the broadcast cadence clips.
+import shutil
+pub = p('public')
+shutil.rmtree(pub, ignore_errors=True)
+os.makedirs(os.path.join(pub, 'audio', 'announcer'))
+public_page = src.replace('/*MODEL*/', ix[ms:me], 1).replace('/*PLAN*/', plan, 1)
+public_page = public_page.replace('/*CADENCE*/', 'const CADENCE_FILES=[];', 1).replace('/*ANNOUNCER*/', ann_js(False), 1).replace('/*MUSIC*/', music_js(False), 1)
+open(os.path.join(pub, 'index.html'), 'w').write(public_page)
+shutil.copy(p('real_plays.json'), pub)
+for v in ann_files.values(): shutil.copy(p(v), os.path.join(pub, v))
+if music: os.makedirs(os.path.join(pub, 'audio', 'music'), exist_ok=True); shutil.copy(p(music), os.path.join(pub, music))
+
 data = open(p('real_plays.json')).read()
 standalone = out_embed.replace("fetch('real_plays.json').then(r=>r.json()).then(R=>{",
                          "const REAL_DATA=" + data + ";Promise.resolve(REAL_DATA).then(R=>{", 1)

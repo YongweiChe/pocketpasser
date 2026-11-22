@@ -10,4 +10,4 @@ audio/announcer/todo.csv
 data/bdb_plays/
 beat-the-pro-qb-cam.html
 out_*.png
-dist/
+public/
