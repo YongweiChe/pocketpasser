@@ -70,8 +70,10 @@ body.playing #res{display:none}
 #flash.on{animation:fl 2.3s ease forwards}
 #flash.win{background:radial-gradient(circle,rgba(22,140,72,.85),rgba(10,60,32,.9))}
 #flash.loss{background:radial-gradient(circle,rgba(190,30,40,.85),rgba(80,8,14,.9))}
+#flash.even{background:radial-gradient(circle,rgba(70,86,110,.85),rgba(20,28,42,.9))}
 #flash b{font-family:"Retro",system-ui,sans-serif;font-size:clamp(64px,15vw,190px);line-height:.9}
 #flash span{font-family:"Retro",system-ui,sans-serif;font-size:clamp(22px,3.4vw,38px);font-weight:700}
+#flash i{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:clamp(14px,1.8vw,20px);color:#b9f6c9;margin-top:10px}#flash i[hidden]{display:none}
 #flash em{font-style:normal;font-size:clamp(16px,2vw,22px);margin-top:6px}
 @keyframes fl{0%{opacity:0;transform:scale(1.25)}8%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0}}
 #mute{right:14px;top:84px;min-width:44px;padding:0 10px;background:var(--glass)}
@@ -199,6 +201,8 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .ladder{display:flex;flex-wrap:wrap;gap:5px;align-content:center}
 .ladder span{font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mute);white-space:nowrap}
 .ladder span.on{background:var(--gold);color:#14201a}
+.band-elite{--band:#f5c518}.band-good{--band:#4ade80}.band-fringe{--band:#fb923c}.band-low{--band:#ff6b6b}
+#rsTotal[class^=band-]{color:var(--band)}.rankCard[class*=band-] .rkBig b{color:var(--band)}.rankCard[class*=band-] .ladder span.on{background:var(--band)}
 @media (max-width:640px){.rankCard{grid-template-columns:1fr}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
@@ -417,7 +421,7 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
   </div></div>
   <div class="hud" id="reveal" hidden><div class="rv"><div class="rvBadge"><b></b></div><div class="rvBody"><small>The real play</small><h2></h2><p class="rvTeam"></p><p class="rvGame"></p><p class="rvDesc"></p><p class="rvCmp"></p></div></div></div>
   <div class="hud glass" id="legend" hidden></div>
-  <div class="hud" id="flash"><b></b><span></span><em></em></div>
+  <div class="hud" id="flash"><b></b><span></span><i hidden></i><em></em></div>
     <div class="hud escHint" aria-hidden="true"><kbd>Esc</kbd> menu</div>
   <div class="hud" id="start">
     <div class="home">
@@ -862,8 +866,10 @@ const NUM={QB:9,X:11,Z:17,Y:88,H:13,TE:87,RB:28,CB:24,RCB:21,FS:33,SS:36,NB:26,M
 const SKIN=[0x8d5524,0xc68642,0xe0ac69,0x5c3a21,0xf1c27d,0x3d2314];
 const KIT={off:{jersey:'#a3161f',ink:'#ffffff',trim:'#f5c518',pants:0xe8d9a8,helmet:0xa3161f,stripe:0xf5c518,mask:0xd9d9d9,sock:0xa3161f},
            def:{jersey:'#f4f4f2',ink:'#1b3d86',trim:'#1b3d86',pants:0x1b3d86,helmet:0x16306b,stripe:0xffffff,mask:0x9aa3b0,sock:0xffffff}};
-function labelSprite(text){const t=tex(128,64,(g)=>{g.fillStyle='rgba(245,197,24,.95)';g.beginPath();g.roundRect(10,10,108,44,22);g.fill();g.fillStyle='#14201a';g.font='700 36px "Retro",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(text,64,34);});
-  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));s.scale.set(1.5,.75,1);return s;}
+function labelSprite(text){const F='700 36px "Retro",system-ui,sans-serif',m=document.createElement('canvas').getContext('2d');m.font=F;
+  const W=Math.min(512,Math.max(128,Math.ceil((m.measureText(text).width+48)/32)*32));
+  const t=tex(W,64,(g)=>{g.fillStyle='rgba(245,197,24,.95)';g.beginPath();g.roundRect(10,10,W-20,44,22);g.fill();g.fillStyle='#14201a';g.font=F;g.textAlign='center';g.textBaseline='middle';g.fillText(text,W/2,34);});
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));s.scale.set(1.5*W/128,.75,1);return s;}
 /* ---------- cardboard cutout players ---------- */
 const CUT={W:128,H:208,F:8};
 const SKINC=['#8d5524','#c68642','#e0ac69','#5c3a21','#f1c27d','#3d2314'];
@@ -1080,9 +1086,15 @@ const TEAMNAME={ARI:'Cardinals',ATL:'Falcons',BAL:'Ravens',BUF:'Bills',CAR:'Pant
 function kitsFor(pl){if(!pl.real)return KIT;const o=TEAMC[pl.meta.offT],d=TEAMC[pl.meta.defT];if(!o||!d)return KIT;const hx=c=>parseInt(c.slice(1),16);
   return{off:{jersey:o[0],ink:'#ffffff',trim:o[1],pants:0xe9e6dc,helmet:hx(o[2]),stripe:hx(o[1]),mask:0xd9d9d9,sock:hx(o[0])},
          def:{jersey:'#f4f4f2',ink:d[0],trim:d[1],pants:hx(d[0]),helmet:hx(d[2]),stripe:hx(d[1]),mask:0x9aa3b0,sock:0xffffff}};}
+const SUFX=/^(jr|sr|ii|iii|iv|v)\.?$/i;
+function lastName(n){const w=String(n||'').trim().split(/\s+/);while(w.length>1&&SUFX.test(w[w.length-1]))w.pop();return w.length>1?w.slice(1).join(' '):w[0]||'';}
+function nameTags(ps){const ok=p=>p.elig&&p.name&&!p.gen&&!/lineman/i.test(p.name),cnt={};   // receivers by last name; two with the same one get a first initial
+  ps.filter(ok).forEach(p=>{const l=lastName(p.name);cnt[l]=(cnt[l]||0)+1;});
+  return p=>{if(!ok(p))return null;const l=lastName(p.name);return cnt[l]>1?p.name.trim()[0]+'. '+l:l;};}
 function realToPlay(r){
   const tr=f=>({type:'track',f}),pathOf=(f,T)=>{const p=[];for(let i=0;i<f.length;i+=3)if(f[i]<=T+.6)p.push([f[i+1],f[i+2]]);return p.length>1?p:[[f[1],f[2]],[f[1],f[2]+.01]];};
-  const off=r.off.map(p=>({id:'o'+p.num,label:p.lab||(p.elig?p.pos+' '+p.num:p.pos),num:p.num,name:p.name,pos:p.pos,speed:p.speed||7,block:!p.elig,big:!p.elig,beh:Object.assign(tr(p.f),{path:pathOf(p.f,r.T)})}));
+  const tag=nameTags(r.off);
+  const off=r.off.map(p=>({id:'o'+p.num,label:tag(p)||p.lab||(p.elig?p.pos+' '+p.num:p.pos),num:p.num,name:p.name,pos:p.pos,speed:p.speed||7,block:!p.elig,big:!p.elig,beh:Object.assign(tr(p.f),{path:pathOf(p.f,r.T)})}));
   const def=r.def.map(p=>({id:p.pos,key:'d'+p.num,label:p.pos,num:p.num,name:p.name,pos:p.pos,sprint:p.sprint,react:p.react,o:p.o,rush:p.rush,big:['DE','DT','NT','DL'].includes(p.pos),beh:tr(p.f)}));
   const tgt=off.find(o=>o.num===r.pro.targetNum&&!o.block)||off.find(o=>!o.block);
   return{real:true,bdb:r.src==='bdb2026',meta:r,name:'Real NFL play · '+r.season+' season',coverage:'the real defense',down:r.down,dist:r.dist,ytg:r.ytg,clock:r.clock.replace(/· :/,'· 0:'),T:r.T,score:r.score,
@@ -1271,7 +1283,18 @@ const TIERS=[[.85,'Hall of Famer','Gold jacket. You out-read the pros.'],[.5,'Al
   [-1.3,'Pee Wee QB','Playing for the orange slices.'],[-1.5,'Flag football dad','Pulled a hamstring on the first snap.'],   // .20, .10
   [-1.7,'Water boy','Hydration is a skill too.'],[-Infinity,'Guy in Section 300','Yelling “just throw it!” at the TV.']];   // .05, worse
 const tierOf=avg=>TIERS.find(t=>avg>=t[0]);
+// per-snap banner: [word, colour class] by how far you were from the pro (a few hundredths is a tie, not a big loss)
+// your real result vs what the pro really got: a positive line when yours turned out better even if the read scored lower
+const OC_RANK={td:4,complete:3,incomplete:2,sack:1,int:0};
+function outcomeNote(P,pl){if(!pl.real||P.sack||P.away)return '';const pk=pl.pro.result.kind,pr=pl.pro.result,proTD=pk==='complete'&&(pl.pro.spot.y+(pr.yac||0))>=pl.ytg;
+  const mk=P.cine==='td'?'td':P.kind,pK=proTD?'td':pk;if(OC_RANK[mk]<=OC_RANK[pK])return '';
+  const me={td:'You threw a touchdown',complete:'You completed it',incomplete:'No pick on your throw'}[mk]||'',them={int:'the real pass was picked off',incomplete:'the real pass fell incomplete',complete:'the real pass came up short of the end zone'}[pK]||'';
+  return me&&them?'✓ '+me+', '+them+'.':'';}
+const snapVerdict=d=>d>=1.5?['HUGE WIN','win']:d>=.5?['BIG WIN','win']:d>=.1?['WIN','win']:d>-.1?['DEAD EVEN','even']:d>-.5?['CLOSE LOSS','loss']:d>-1.5?['LOSS','loss']:['BIG LOSS','loss'];
+// rank colour band: elite gold, NFL-level green, fringe amber, not-yet red
+const bandOf=t=>t[0]>=.3?'elite':t[0]>=-.4?'good':t[0]>=-.85?'fringe':'low';
 function anRank(res,tot,W){const n=Math.max(1,res.length),avg=tot/n,t=tierOf(avg);
+  $('rsRankCard').className='anCard rankCard band-'+bandOf(t);
   $('rsRankCard').innerHTML=`<div class="rkBig"><small>Your rank</small><b>${t[1]}</b><span>${t[2]} · ${fmt(avg)} EPA per snap vs ${esc(W)}</span></div>
     <div class="ladder" aria-label="Rank ladder, best to worst">${TIERS.map(x=>`<span class="${x===t?'on':''}"${x===t?' aria-current="true"':''}>${x[1]}</span>`).join('')}</div>`;}
 /* ---------- end-of-round analytics ---------- */
@@ -1323,8 +1346,8 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   let vsNote='';if(isVs){const old=vsRec(R.qb);if(!old||tot>old.best){store.set('vs.'+R.qb,tot.toFixed(2)+'|'+wins+'|'+n);vsNote=old?` New best against ${W} (was ${fmt(old.best)}).`:'';}else vsNote=` Your best against ${W}: ${fmt(old.best)}.`;}
   S.phase='results';clearTimeout(S.revealTO);hideReview();$('reveal').hidden=true;$('res').hidden=true;banner('');document.body.classList.add('resultsOn');
   $('rsKind').textContent=isTut?'Tutorial complete':isDaily?'Today’s 6 · '+dayLabel():isVs?'Versus · '+R.qb:'Practice round · '+dayLabel();
-  $('rsTotal').textContent=fmt(tot)+' EPA';$('rsTotal').className=tot>=0?'pos':'neg';
-  $('rsSub').textContent=(tot>=0?`You beat ${W}`:`${W[0].toUpperCase()+W.slice(1)} beat you`)+` · ${wins} of ${n} snaps won`+(isTut?' · you’re ready for today’s 6':isDaily||isVs?'':' · practice rounds aren’t ranked');
+  $('rsTotal').textContent=fmt(tot)+' EPA';$('rsTotal').className='band-'+bandOf(tierOf(tot/Math.max(1,n)));
+  $('rsSub').textContent=(tot>=0?`You beat ${W}`:tot/Math.max(1,n)>-.1?`Neck and neck with ${W}`:bandOf(tierOf(tot/Math.max(1,n)))==='good'?`Close to ${W}`:`${W[0].toUpperCase()+W.slice(1)} beat you`)+` · ${wins} of ${n} snaps won`+(isTut?' · you’re ready for today’s 6':isDaily||isVs?'':' · practice rounds aren’t ranked');
   $('rsVerdict').textContent=anVerdict(res,isVs?W:'the pros')+vsNote;
   $('again').textContent=isTut?'Play today’s 6':isVs?'Play '+W+' again':'Play another 6 snaps';
   $('again').onclick=()=>isTut?startRound('daily'):isVs?startRound('versus',R.qb):startRound('practice');
@@ -1429,9 +1452,10 @@ function finishReal(){
       thrown,kind:P.sack?'sack':P.away?'away':P.kind,pC:thrown?P.ev.pC:0,pI:thrown?P.ev.pI:0,air:thrown&&P.ev.S?P.ev.S.y:null,type:P.type,early:earlyBy(P),
       proPC:pro.pC,proPI:pro.pI,proAir:pl.pro.spot.y,proType:pl.pro.type,proKind:pl.pro.result.kind,proText:pl.real?pl.pro.text:''};
     const B=S.heat&&S.heat.best;if(B){const w=whyBest(B,P);Object.assign(S.round.res[S.round.i],{best:w.short,bestEpa:B.epa,why:w.why,found:w.found});}}
-  const f=$('flash');f.className='hud';void f.offsetWidth;f.className='hud on '+(diff>=0?'win':'loss');
-  f.querySelector('b').textContent=diff>=0?'BIG WIN':'BIG LOSS';ANN.say(diff>=.5?'beat-pro-big':diff>=0?'beat-pro':diff<=-1.5?'blunder':diff<=-.5?'lost-big':'lost');
-  f.querySelector('span').textContent=(diff>=0?'You beat the pro by ':'The pro beat you by ')+Math.abs(diff).toFixed(2)+' EPA';
+  const f=$('flash');f.className='hud';void f.offsetWidth;const vd=snapVerdict(diff);f.className='hud on '+vd[1];
+  f.querySelector('b').textContent=vd[0];ANN.say(diff>=.5?'beat-pro-big':diff>=0?'beat-pro':diff<=-1.5?'blunder':diff<=-.5?'lost-big':'lost');
+  f.querySelector('span').textContent=Math.abs(diff)<.005?'You matched the pro':(diff>0?'You beat the pro by ':Math.abs(diff)<.1?'The pro edged you by ':'The pro beat you by ')+Math.abs(diff).toFixed(2)+' EPA';
+  const oc=outcomeNote(P,pl);f.querySelector('i').textContent=oc;f.querySelector('i').hidden=!oc;
   f.querySelector('em').textContent=describe(P)+(earlyBy(P)?' · released '+earlyBy(P).toFixed(1)+' s before the pro':'')+(last?' · Round total '+fmt(tot)+' EPA vs the pros':'');
   if(isTut())setTimeout(()=>{if(isTut()&&S.phase==='done'&&play()===pl)tutCard('done');},2600);
   holdHere();

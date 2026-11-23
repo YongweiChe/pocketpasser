@@ -50,6 +50,9 @@ Throw = target spot + type (fastball: 0.05 + d/23 s; touch: 0.15 + d/18.5 s; cal
 - Look controls: 1/2/3 snap the view left/middle/right; arrow keys free-look during the play; the view locks at the freeze.
 - **Rebindable keys:** Settings → Controls (home page and pause menu). `KB_ACT` lists every action with its default (Space snap, 1/2/3 look, arrows free-look, F/T, R/P replays, M sound); bindings save to `qbcam.keys`. Binding a key that's already in use swaps the two. Esc is fixed (pause menu). Every on-screen key hint reads from `kn(action)`, so labels follow the bindings.
 - Throwing early is allowed after a 0.6 s drop.
+- **Receiver tags are last names** (`nameTags`/`lastName` in realToPlay; suffixes like Jr. dropped; a first initial when two share one), not WR1 / WR 15.
+- **Snap banner has tiers** (`snapVerdict`): HUGE WIN ≥1.5, BIG WIN ≥.5, WIN ≥.1, DEAD EVEN within ±0.1 (grey), CLOSE LOSS, LOSS, BIG LOSS ≤−1.5. Scoring stays on expected EPA (the decision), but `outcomeNote` adds a green line when your actual result beat the pro's real one (e.g. you completed it, the real pass was picked).
+- **Rank colour bands** (`bandOf`) on the results page: gold Pro Bowler and up, green Franchise QB / NFL starter / Game manager, amber Backup to College QB, red below. The big total uses the band colour, so an NFL-starter round doesn't read as a failure.
 - **Touch controls (phones):** swipe left/right during the play to look around (finger right = look right); hold still ~0.23 s to pick up the ball, then drag to aim and let go to throw early. At the freeze any press aims at once (view is locked). The aim point sits 56 px above the finger; dragging off the field and letting go cancels. Mouse keeps click-to-throw. Buttons hide keyboard hints on touch screens (`kp()`).
 - A receiver who has settled (curl/hitch) turns to the QB, bounces on his toes and waves; both hands go up when the ball is coming to him.
 
