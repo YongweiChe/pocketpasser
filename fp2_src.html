@@ -148,6 +148,15 @@ body.cinema #tut,body.cinema #nextHint{display:none}
 #nextHint kbd{font:inherit;font-size:.8em;padding:0 8px;color:var(--gold);border-color:var(--gold)}
 @keyframes nh{50%{border-color:var(--gold)}}
 @media(prefers-reduced-motion:reduce){#nextHint{animation:none}}
+/* down & distance flash at the start of each play: one word at a time, each punches in then fades as the next lands */
+#ddFlash{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:6}
+#ddFlash b{grid-area:1/1;font:400 clamp(72px,17vw,220px)/1 "Retro",system-ui,sans-serif;color:#fff;text-transform:uppercase;letter-spacing:.02em;
+  text-shadow:6px 6px 0 #000,0 0 40px rgba(0,0,0,.55);opacity:0;animation:ddWord .4s steps(6,end) both}
+#ddFlash b.last{animation:ddLast 1.25s steps(14,end) both}
+#ddFlash.d3 b.n{color:#f5c518}#ddFlash.d4 b.n{color:#ff6b6b}#ddFlash b.amp{color:#a9b8af;font-size:clamp(56px,12vw,160px)}
+@keyframes ddWord{0%{opacity:0;transform:scale(1.9)}18%{opacity:1;transform:scale(.94)}30%{transform:scale(1)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.85)}}
+@keyframes ddLast{0%{opacity:0;transform:scale(1.9)}8%{opacity:1;transform:scale(.94)}14%{transform:scale(1)}72%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.08)}}
+@media(prefers-reduced-motion:reduce){#ddFlash b,#ddFlash b.last{animation:ddCalm .9s linear both}@keyframes ddCalm{0%,100%{opacity:0}20%,80%{opacity:1}}}
 @media(max-width:1500px){#note{display:none}}
 #traj{right:16px;bottom:84px;width:260px;padding:8px 10px 6px;pointer-events:none;display:none}
 #traj.on{display:block}#traj small{display:flex;justify-content:space-between;font-size:12px;color:#c9d3cf;margin-bottom:2px}#traj small b{color:#fff}
@@ -421,6 +430,7 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
   </div></div>
   <div class="hud" id="reveal" hidden><div class="rv"><div class="rvBadge"><b></b></div><div class="rvBody"><small>The real play</small><h2></h2><p class="rvTeam"></p><p class="rvGame"></p><p class="rvDesc"></p><p class="rvCmp"></p></div></div></div>
   <div class="hud glass" id="legend" hidden></div>
+  <div id="ddFlash" aria-hidden="true"></div>
   <div class="hud" id="flash"><b></b><span></span><i hidden></i><em></em></div>
     <div class="hud escHint" aria-hidden="true"><kbd>Esc</kbd> menu</div>
   <div class="hud" id="start">
@@ -478,6 +488,9 @@ const play=()=>PLAYS[S.pi];
 const fmt=v=>(v>=0?'+':'')+v.toFixed(2);
 function banner(t){$('banner').textContent=t;}
 function ordinal(n){return['','1st','2nd','3rd','4th'][n];}
+function ddFlash(p){const el=$('ddFlash');if(!el)return;const words=[ordinal(p.down),'&',p.dist>=p.ytg?'Goal':String(p.dist)],gap=.42;
+  el.className='d'+p.down;el.innerHTML=words.map((w,i)=>`<b class="${i===0?'n':i===1?'amp':'last'}" style="animation-delay:${(i*gap).toFixed(2)}s">${w}</b>`).join('');
+  clearTimeout(el._t);el._t=setTimeout(()=>{el.innerHTML='';},(words.length-1)*gap*1000+1400);}
 function fieldPos(ytg){const a=100-ytg;return a<50?'own '+a:a===50?'midfield':'opp '+(100-a);}
 const coarse=matchMedia('(pointer:coarse)').matches;
 
@@ -1377,7 +1390,7 @@ function loadPlay(i){
   tutApply();hintRing.visible=false;trailReset();ghost.visible=pathDots.visible=false;ghostFor=null;S.aimSnap=null;
   S.pi=i;S.phase='pre';S.t=0;S.plan=null;S.heat=null;S.mine=null;S.pend=null;S.aim=null;S.memoEnd=performance.now()+(S.round&&S.round.kind==='tutorial'?15000:7000);S.advanceAt=0;S.camBlend=0;S.yaw=0;S.pitchOff=0;S.sackHit=false;document.body.classList.remove('playing');S.cadence=false;S.spoke=false;S.cinePos=null;document.body.classList.remove('cinema');$('letter').classList.remove('on');$('cap').classList.remove('on');
   clearTimeout(S.revealTO);$('reveal').hidden=true;hideReview();const p=play();buildField(p);buildActors(p);buildArrows(p);showArrows(p,false);buildProg(p);S.read=-1;$('prog').hidden=true;$('prog').classList.remove('locked');
-  $('dd').textContent=ordinal(p.down)+' & '+(p.dist>=p.ytg?'goal':p.dist);$('fp').textContent=fieldPos(p.ytg)+' · '+p.clock;
+  $('dd').textContent=ordinal(p.down)+' & '+(p.dist>=p.ytg?'goal':p.dist);ddFlash(p);$('fp').textContent=fieldPos(p.ytg)+' · '+p.clock;
   $('pname').textContent=(S.round?roundLabel()+' · ':'')+p.name;
   $('snap').textContent='Snap now'+kp('snap');$('snap').disabled=false;$('away').disabled=true;banner('Memorize the routes');
   ANN.stop();AU.unslow();S.dbSaid=false;clearTimeout(S.preTO);if(!(S.round&&S.round.i===0&&ANN.has('round-'+S.round.kind)))S.preTO=setTimeout(()=>{if(S.phase==='pre'&&S.pi===i&&!S.cadence&&!S.paused)ANN.say(presnapKey(p));},900);

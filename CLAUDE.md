@@ -49,6 +49,7 @@ Throw = target spot + type (fastball: 0.05 + d/23 s; touch: 0.15 + d/18.5 s; cal
 - Routes toggle exists for practice/tutorial; it's forced off in Today's 6 so the leaderboard is fair.
 - Look controls: 1/2/3 snap the view left/middle/right; arrow keys free-look during the play; the view locks at the freeze.
 - **Rebindable keys:** Settings → Controls (home page and pause menu). `KB_ACT` lists every action with its default (Space snap, 1/2/3 look, arrows free-look, F/T, R/P replays, M sound); bindings save to `qbcam.keys`. Binding a key that's already in use swaps the two. Esc is fixed (pause menu). Every on-screen key hint reads from `kn(action)`, so labels follow the bindings.
+- **Down & distance flash:** at the start of each play `ddFlash()` punches "2nd" "&" "10" (or "Goal") onto the screen one word at a time (0.42 s apart, each fades before the next lands; 3rd down gold, 4th red). Non-blocking overlay `#ddFlash`.
 - Throwing early is allowed after a 0.6 s drop.
 - **Receiver tags are last names** (`nameTags`/`lastName` in realToPlay; suffixes like Jr. dropped; a first initial when two share one), not WR1 / WR 15.
 - **Snap banner has tiers** (`snapVerdict`): HUGE WIN ≥1.5, BIG WIN ≥.5, WIN ≥.1, DEAD EVEN within ±0.1 (grey), CLOSE LOSS, LOSS, BIG LOSS ≤−1.5. Scoring stays on expected EPA (the decision), but `outcomeNote` adds a green line when your actual result beat the pro's real one (e.g. you completed it, the real pass was picked).
