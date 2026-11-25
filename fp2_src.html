@@ -215,7 +215,13 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .ladder span{font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--mute);white-space:nowrap}
 .ladder span.on{background:var(--gold);color:#14201a}
 .band-elite{--band:#f5c518}.band-good{--band:#4ade80}.band-fringe{--band:#fb923c}.band-low{--band:#ff6b6b}
-#rsTotal[class^=band-]{color:var(--band)}.rankCard[class*=band-] .rkBig b{color:var(--band)}.rankCard[class*=band-] .ladder span.on{background:var(--band)}
+#rsTotal[class^=band-]{color:var(--band)}
+.distCard{display:grid;gap:10px}.distCard .rkBig b{color:var(--band,var(--gold))}
+.dist{margin:0}.dist svg{display:block;width:100%;height:auto;overflow:visible}.dist figcaption{font-size:12px;margin-top:4px}
+.dist .db{fill:rgba(233,238,233,.2)}.dist .db.me{fill:var(--band,var(--gold))}.dist .hit{fill:transparent}.dist .db.hov{fill:rgba(233,238,233,.38)}.dist .db.me.hov{fill:var(--band,var(--gold))}
+.dist .base{stroke:rgba(255,255,255,.25);stroke-width:1}.dist .tk line{stroke:rgba(255,255,255,.3)}.dist .tk text{fill:var(--mute);font-size:17px;text-anchor:middle;font-family:"RetroText",system-ui,sans-serif}
+.dist .you{stroke:var(--ink);stroke-width:2}.dist .youT{fill:var(--ink);font:400 14px "Retro",system-ui,sans-serif}
+.rankCard[class*=band-] .rkBig b{color:var(--band)}.rankCard[class*=band-] .ladder span.on{background:var(--band)}
 @media (max-width:640px){.rankCard{grid-template-columns:1fr}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
@@ -409,18 +415,17 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
   <div class="hud" id="letter"><i></i><i></i></div><div class="hud" id="cap"><b></b><span></span></div><div class="hud" id="cut"></div><div class="hud" id="skipHint">Space or tap to skip</div>
   <div class="hud" id="results" hidden><div class="ana">
     <header class="anTop">
-      <div><small id="rsKind"></small><h2 id="rsTotal"></h2><p id="rsSub"></p><p id="rsVerdict" class="mute"></p></div>
+      <div><small id="rsKind"></small><h2 id="rsTotal"></h2><p id="rsSub"></p></div>
       <div class="anBtns"><button class="primary" id="again">Play another 6 snaps</button><button id="rsAlt" hidden></button><button id="rsHome">Home page</button></div>
     </header>
-    <section class="anCard rankCard" id="rsRankCard" aria-label="Your rank"></section>
-    <section class="kpis" id="rsKpis" aria-label="Round summary"></section>
+    <section class="anCard distCard" id="rsRankCard" aria-label="Your rank among players"></section>
     <section class="anCard">
       <div class="anHead"><h3>Play by play</h3><div class="lgd" aria-hidden="true"><span><i class="dot you"></i>You</span><span><i class="dot pro"></i><span class="proName">The pro</span></span></div></div>
-      <p class="mute anHint">Expected points added by each decision, scored on the odds at the moment of the throw, not on how the ball bounced. The gap between the dots is what you won or lost on that snap.</p>
+      <p class="mute anHint">Each decision’s expected points. The gap is what you won or lost on that snap.</p>
       <div id="rsChart" class="dumb"></div>
     </section>
     <div class="anGrid">
-      <section class="anCard"><div class="anHead"><h3 id="rsTendH">How you threw vs the pros</h3><div class="lgd" aria-hidden="true"><span><i class="dot you"></i>You</span><span><i class="dot pro"></i><span class="proName">The pro</span></span></div></div><div id="rsTend" class="tend"></div></section>
+      <h3 id="rsTendH" hidden></h3>
       <section class="anCard" id="rsLbCard">
         <h3 id="rsLbH">Today’s leaderboard</h3>
         <div id="rsRank" class="rank"></div>
@@ -429,7 +434,7 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
         <div id="rsBoard"></div>
       </section>
     </div>
-    <section class="anCard"><h3>Every throw</h3><ol id="rsList" class="plays"></ol></section>
+    <ol id="rsList" hidden></ol>
     <div class="anTip" id="anTip" hidden></div>
   </div></div>
   <div class="hud" id="reveal" hidden><div class="rv"><div class="rvBadge"><b></b></div><div class="rvBody"><small>The real play</small><h2></h2><p class="rvTeam"></p><p class="rvGame"></p><p class="rvDesc"></p><p class="rvCmp"></p></div></div></div>
@@ -1309,10 +1314,28 @@ function outcomeNote(P,pl){if(!pl.real||P.sack||P.away)return '';const pk=pl.pro
 const snapVerdict=d=>d>=1.5?['HUGE WIN','win']:d>=.5?['BIG WIN','win']:d>=.1?['WIN','win']:d>-.1?['DEAD EVEN','even']:d>-.5?['CLOSE LOSS','loss']:d>-1.5?['LOSS','loss']:['BIG LOSS','loss'];
 // rank colour band: elite gold, NFL-level green, fringe amber, not-yet red
 const bandOf=t=>t[0]>=.3?'elite':t[0]>=-.4?'good':t[0]>=-.85?'fringe':'low';
-function anRank(res,tot,W){const n=Math.max(1,res.length),avg=tot/n,t=tierOf(avg);
-  $('rsRankCard').className='anCard rankCard band-'+bandOf(t);
-  $('rsRankCard').innerHTML=`<div class="rkBig"><small>Your rank</small><b>${t[1]}</b><span>${t[2]} · ${fmt(avg)} EPA per snap vs ${esc(W)}</span></div>
-    <div class="ladder" aria-label="Rank ladder, best to worst">${TIERS.map(x=>`<span class="${x===t?'on':''}"${x===t?' aria-current="true"':''}>${x[1]}</span>`).join('')}</div>`;}
+// estimated spread of players' EPA per snap vs the pro: the rank cut-offs' percentiles (tools/calibrate_ranks.js) as a CDF
+const DIST_CDF=[[-2.4,0],[-1.7,.05],[-1.5,.10],[-1.3,.20],[-1.05,.30],[-.85,.40],[-.65,.50],[-.55,.60],[-.4,.70],[-.25,.78],[.05,.90],[.3,.95],[.5,.97],[.85,.99],[1.3,1]];
+function cdfAt(v){const C=DIST_CDF;if(v<=C[0][0])return 0;for(let i=1;i<C.length;i++)if(v<=C[i][0]){const[a,p]=C[i-1],[b,q]=C[i];return p+(q-p)*(v-a)/(b-a);}return 1;}
+function anRank(res,tot,W){const n=Math.max(1,res.length),avg=tot/n,t=tierOf(avg),band=bandOf(t),pctl=Math.round(cdfAt(avg)*100);
+  const lo=-2.4,hi=1.3,bw=.1,nb=Math.round((hi-lo)/bw),raw=[];for(let i=0;i<nb;i++)raw.push(cdfAt(lo+(i+1)*bw)-cdfAt(lo+i*bw));
+  const sm=a=>a.map((_,i)=>[-2,-1,0,1,2].reduce((t,k,j)=>t+(a[Math.min(a.length-1,Math.max(0,i+k))])*[.1,.2,.4,.2,.1][j],0));const den=sm(sm(raw)),mx=Math.max(...den);
+  const Wd=innerWidth<560?440:900,Hd=innerWidth<560?190:170,top=28,base=Hd-28,X=v=>(v-lo)/(hi-lo)*Wd,cl=v=>Math.max(lo,Math.min(hi-.001,v)),me=Math.floor((cl(avg)-lo)/bw);
+  const bars=den.map((d,i)=>{const x=X(lo+i*bw)+1,w=Wd/nb-2,h=Math.max(2,d/mx*(base-top));
+    return `<rect class="db${i===me?' me':''}" data-i="${i}" x="${x.toFixed(1)}" y="${(base-h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2"/><rect class="hit" data-i="${i}" x="${(x-1).toFixed(1)}" y="${top-10}" width="${(Wd/nb).toFixed(1)}" height="${base-top+10}"/>`;}).join('');
+  const tick=v=>`<g class="tk"><line x1="${X(v)}" x2="${X(v)}" y1="${base}" y2="${base+4}"/><text x="${X(v)}" y="${base+18}">${v===0?'0 = the pro':(v>0?'+':'')+v}</text></g>`;
+  const mxX=X(cl(avg)),lab=`You · top ${Math.max(1,100-pctl)}%`,anchor=mxX<70?'start':mxX>Wd-70?'end':'middle';
+  $('rsRankCard').className='anCard distCard band-'+band;
+  $('rsRankCard').innerHTML=`<div class="rkBig"><small>Your rank</small><b>${t[1]}</b><span>${t[2]} ${fmt(avg)} EPA per snap vs ${esc(W)}. Better than about ${pctl}% of players.</span></div>
+    <figure class="dist"><svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Estimated spread of players' EPA per snap; you are at ${fmt(avg)}, better than about ${pctl}%">
+      <line class="base" x1="0" x2="${Wd}" y1="${base}" y2="${base}"/>${bars}${[-2,-1,0,1].map(tick).join('')}
+      <line class="you" x1="${mxX}" x2="${mxX}" y1="${top-6}" y2="${base}"/><text class="youT" x="${mxX}" y="${top-12}" text-anchor="${anchor}">${lab}</text></svg>
+      <figcaption class="mute">Estimated spread of players, from the model until real rounds come in.</figcaption></figure>`;
+  const svg=$('rsRankCard').querySelector('svg'),tip=$('anTip');
+  svg.onpointermove=e=>{const h=e.target.closest('.hit');if(!h){tip.hidden=true;return;}const i=+h.dataset.i;svg.querySelectorAll('.db').forEach(r=>r.classList.toggle('hov',+r.dataset.i===i));const a=lo+i*bw,box=$('results').querySelector('.ana').getBoundingClientRect();
+    tip.innerHTML=`<b>${fmt(a)} to ${fmt(a+bw)} EPA per snap</b><div class="r"><span>Players here (est.)</span><span>${(raw[i]*100).toFixed(1)}%</span></div><div class="r"><span>Rank</span><span>${tierOf(a+bw/2)[1]}</span></div>`+(i===me?'<div class="r"><span>You</span><span>'+fmt(avg)+'</span></div>':'');
+    tip.hidden=false;tip.style.left=Math.min(e.clientX-box.left+14,box.width-290)+'px';tip.style.top=(e.clientY-box.top+14)+'px';};
+  svg.onpointerleave=()=>{tip.hidden=true;svg.querySelectorAll('.db.hov').forEach(r=>r.classList.remove('hov'));};}
 /* ---------- end-of-round analytics ---------- */
 const pct=v=>v==null?'—':Math.round(v*100)+'%';
 const avgOf=(a,f)=>{const v=a.map(f).filter(x=>x!=null&&!isNaN(x));return v.length?v.reduce((s,x)=>s+x,0)/v.length:null;};
@@ -1364,14 +1387,14 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   $('rsKind').textContent=isTut?'Tutorial complete':isDaily?'Today’s 6 · '+dayLabel():isVs?'Versus · '+R.qb:'Practice round · '+dayLabel();
   $('rsTotal').textContent=fmt(tot)+' EPA';$('rsTotal').className='band-'+bandOf(tierOf(tot/Math.max(1,n)));
   $('rsSub').textContent=(tot>=0?`You beat ${W}`:tot/Math.max(1,n)>-.1?`Neck and neck with ${W}`:bandOf(tierOf(tot/Math.max(1,n)))==='good'?`Close to ${W}`:`${W[0].toUpperCase()+W.slice(1)} beat you`)+` · ${wins} of ${n} snaps won`+(isTut?' · you’re ready for today’s 6':isDaily||isVs?'':' · practice rounds aren’t ranked');
-  $('rsVerdict').textContent=anVerdict(res,isVs?W:'the pros')+vsNote;
+  if(vsNote)$('rsSub').textContent+=' ·'+vsNote;
   $('again').textContent=isTut?'Play today’s 6':isVs?'Play '+W+' again':'Play another 6 snaps';
   $('again').onclick=()=>isTut?startRound('daily'):isVs?startRound('versus',R.qb):startRound('practice');
   $('rsAlt').hidden=!isVs;$('rsAlt').textContent='Pick another QB';$('rsAlt').onclick=()=>{goHome();openVs();};
   document.querySelectorAll('#results .proName').forEach(e=>e.textContent=isVs?W:'The pro');$('rsTendH').textContent='How you threw vs '+(isVs?W:'the pros');
-  anRank(res,tot,W);ANN.stop();ANN.say('rank-'+tierOf(tot/Math.max(1,n))[1].toLowerCase().replace(/[^a-z0-9]+/g,'-'));$('rsKpis').innerHTML=anKpis(res,wins,W);anDumb(res,W);anTend(res,W);
+  anRank(res,tot,W);ANN.stop();ANN.say('rank-'+tierOf(tot/Math.max(1,n))[1].toLowerCase().replace(/[^a-z0-9]+/g,'-'));anDumb(res,W);
   $('rsList').innerHTML=res.map((r,k)=>`<li><span class="n">${k+1}</span><span class="t">${esc(r.title)}<small>${esc(r.sit)} · You: ${esc(r.desc)}${r.proText?' · Real play: '+esc(r.proText):''}${r.best&&!r.found?'<br>Best read: '+esc(r.best)+'. '+esc(r.why):r.found?'<br>You found the best read.':''}</small></span><span class="d ${r.diff>=0?'pos':'neg'}">${fmt(r.diff)}</span></li>`).join('');
-  $('rsLbCard').hidden=isTut||isVs;$('results').hidden=false;$('results').scrollTop=0;$('anTip').hidden=true;setTimeout(()=>$('again').focus({preventScroll:true}),40);
+  $('rsLbCard').hidden=isTut||isVs||!LB.db;$('results').hidden=false;$('results').scrollTop=0;$('anTip').hidden=true;setTimeout(()=>$('again').focus({preventScroll:true}),40);
   $('rsBoard').innerHTML='<p class="mute">Loading today’s leaderboard…</p>';$('rsRank').innerHTML='';$('rsForm').hidden=true;$('rsNote').textContent='';
   if(isTut||isVs)return;
   const done=store.get('daily')===dayKey();

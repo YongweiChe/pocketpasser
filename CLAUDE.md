@@ -1,6 +1,6 @@
 # Pocket Passer (pocketpasser.io)
 
-A first-person browser QB game. You memorize a play, take the snap, and throw (early, or at the freeze when the real QB released it). Your decision is scored in EPA against the pro's actual throw. A home page offers the Daily 6 (the same 6 plays for everyone each day, with a leaderboard), practice rounds, versus mode (six snaps of one real QB, best score per QB kept in localStorage `qbcam.vs.<name>`), and a tutorial. Esc opens a pause menu (resume / restart play / sound / home); every round ends on an analytics page.
+A first-person browser QB game. You memorize a play, take the snap, and throw (early, or at the freeze when the real QB released it). Your decision is scored in EPA against the pro's actual throw. A home page offers the Daily 6 (the same 6 plays for everyone each day, with a leaderboard), practice rounds, versus mode (six snaps of one real QB, best score per QB kept in localStorage `qbcam.vs.<name>`), and a tutorial. Esc opens a pause menu (resume / restart play / sound / home); every round ends on a deliberately simple results page: total EPA vs the pro, your rank with an estimated distribution of players (histogram from the rank cut-offs' percentiles, `DIST_CDF`, your bar highlighted, "top N%"), and the play-by-play dumbbell (you vs the pro per snap). KPIs, tendencies and the every-throw list were removed at the user's request; the leaderboard card only shows where a board exists.
 
 ## Files
 | File | What it is |
