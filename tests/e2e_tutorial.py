@@ -13,9 +13,13 @@ async def main():
     # first visit: the main button asks about the tutorial; yes = one real play: three opening cards, the freeze card, the score card, then today's 6
     await pg.click('#go');await pg.wait_for_timeout(300);await pg.click('#fqYes');await pg.wait_for_timeout(1200)
     cards=[await pg.evaluate("__S.tutCard")];await pg.screenshot(path='out_m1.png')
-    for k in range(2):   # three opening cards: real play -> at the snap -> find your read
-      await pg.keyboard.press('Space');await pg.wait_for_timeout(300);cards.append(await pg.evaluate("__S.tutCard"))
-    await pg.keyboard.press('Space');await pg.wait_for_timeout(300);await pg.keyboard.press('Space')
+    await pg.keyboard.press('Space');await pg.wait_for_timeout(400);cards.append(await pg.evaluate("__S.tutCard"))   # pre2
+    await pg.keyboard.press('Space');await pg.wait_for_timeout(300);await pg.keyboard.press('Space')                   # close card 2, snap
+    for i in range(60):
+      if await pg.evaluate("__S.tutCard")=='look':break
+      await pg.wait_for_timeout(100)
+    t0=await pg.evaluate("__S.t");await pg.wait_for_timeout(600);paused=abs(await pg.evaluate("__S.t")-t0)<1e-6
+    cards.append(await pg.evaluate("__S.tutCard"));cards.append('paused' if paused else 'NOT paused');await pg.keyboard.press('Space')
     for i in range(80):
       if await pg.evaluate("__S.phase")=='decide':break
       await pg.wait_for_timeout(150)
@@ -28,7 +32,13 @@ async def main():
       if await pg.evaluate("__S.phase")!='done':await pg.keyboard.press('Space')
       await pg.wait_for_timeout(200)
     cards.append(await pg.evaluate("__S.tutCard"));await pg.screenshot(path='out_m3.png')
-    await pg.keyboard.press('Space');await pg.wait_for_timeout(800)
+    # plays 2 and 3 at game tempo: a tempo card, the real clock, no help; Space drives through (no throw = sacked at the clock)
+    await pg.keyboard.press('Space');await pg.wait_for_timeout(600);cards.append(await pg.evaluate("[__S.round.i,__S.tutCard,__S.limit]"))
+    for i in range(400):
+      if await pg.evaluate("__S.phase")=='results':break
+      await pg.keyboard.press('Space');await pg.wait_for_timeout(250)
+    cards.append(await pg.evaluate("[__S.phase,__S.round.plays.length,document.getElementById('rsKind').textContent]"))
+    await pg.click('#again');await pg.wait_for_timeout(1500)
     print(cards,await pg.evaluate("[__S.round.kind,__S.round.plays.every(i=>__PLAYS[i].real),__S.routes,document.querySelector('#tut').hidden]"))
     print(errs[:5]);await b.close()
 asyncio.run(main())
