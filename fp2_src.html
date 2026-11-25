@@ -68,9 +68,14 @@ body.playing #res{display:none}
 #help:empty{display:none}
 #flash{inset:0;display:grid;place-content:center;text-align:center;pointer-events:none;opacity:0;z-index:5}
 #flash.on{animation:fl 2.3s ease forwards}
-#flash.win{background:radial-gradient(circle,rgba(22,140,72,.85),rgba(10,60,32,.9))}
-#flash.loss{background:radial-gradient(circle,rgba(190,30,40,.85),rgba(80,8,14,.9))}
-#flash.even{background:radial-gradient(circle,rgba(70,86,110,.85),rgba(20,28,42,.9))}
+#flash.win{background:radial-gradient(ellipse at center,rgba(10,60,32,.25) 30%,rgba(10,60,32,.7))}
+#flash.win b{color:#fff;text-shadow:6px 6px 0 #0a3c20,0 0 30px rgba(0,0,0,.5)}
+#flash.loss{background:radial-gradient(ellipse at center,rgba(0,0,0,.15) 30%,rgba(0,0,0,.6))}
+#flash.loss b{font-size:clamp(40px,8vw,104px);color:#e9e6df;text-shadow:4px 4px 0 #000}#flash.loss span{font-size:clamp(16px,2.4vw,26px);color:#d6d6d6}
+#flash.even{background:radial-gradient(ellipse at center,rgba(20,28,42,.2) 30%,rgba(20,28,42,.65))}
+#flash.even b{font-size:clamp(48px,10vw,130px);text-shadow:5px 5px 0 #000}
+#flash span,#flash em,#flash i{text-shadow:2px 2px 0 #000}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;image-rendering:pixelated}
 #flash b{font-family:"Retro",system-ui,sans-serif;font-size:clamp(64px,15vw,190px);line-height:.9}
 #flash span{font-family:"Retro",system-ui,sans-serif;font-size:clamp(22px,3.4vw,38px);font-weight:700}
 #flash i{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:clamp(14px,1.8vw,20px);color:#b9f6c9;margin-top:10px}#flash i[hidden]{display:none}
@@ -123,10 +128,15 @@ body.playing .escHint{opacity:.5}
 #letter i{position:absolute;left:0;right:0;height:0;background:#000;transition:height .4s ease}
 #letter i:first-child{top:0}#letter i:last-child{bottom:0}
 #letter.on i{height:6.5vh}
-#cap{left:4vw;bottom:calc(6.5vh + 12px);z-index:4;pointer-events:none;opacity:0;transform:translateX(-30px);transition:opacity .35s,transform .35s}
-#cap.on{opacity:1;transform:none}
-#cap b{display:block;font-family:"Retro",system-ui,sans-serif;font-size:clamp(28px,4.2vw,52px);line-height:.95;text-shadow:0 4px 24px rgba(0,0,0,.6)}
-#cap span{font-size:clamp(13px,1.5vw,16px);color:var(--gold);font-weight:600;text-shadow:0 2px 8px rgba(0,0,0,.8)}
+/* catch-point call ("Caught", "Broken up"…): punches onto the upper third of the screen, then the detail line drops in */
+#cap{left:0;right:0;top:12vh;z-index:4;pointer-events:none;text-align:center;opacity:0;padding:0 16px}
+#cap.on{opacity:1}
+#cap b{display:block;font-family:"Retro",system-ui,sans-serif;font-size:clamp(44px,8.5vw,120px);line-height:1;text-transform:uppercase;color:#fff;text-shadow:5px 5px 0 #000,0 0 30px rgba(0,0,0,.45)}
+#cap span{display:block;margin-top:10px;font-family:"Retro",system-ui,sans-serif;font-size:clamp(14px,2vw,24px);color:var(--gold);text-shadow:2px 2px 0 #000}
+#cap.on b{animation:capIn .45s steps(7,end) both}#cap.on span{animation:capSub .3s steps(4,end) .28s both}
+#cap.good b{color:#fff}#cap.bad b{color:#e9e6df;font-size:clamp(36px,6.5vw,92px)}#cap.td b{color:var(--gold)}
+@keyframes capIn{0%{opacity:0;transform:scale(2)}40%{opacity:1;transform:scale(.93)}70%{transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
+@keyframes capSub{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:none}}
 #cut{inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
 #cut.on{animation:cut .3s ease-out}
 @keyframes cut{0%{opacity:.85}100%{opacity:0}}
@@ -170,6 +180,8 @@ body.cinema #tut,body.cinema #nextHint{display:none}
 #prog button.on{background:var(--gold);color:#14201a}#prog button.on b{color:#14201a}
 #prog.locked button{opacity:.5;pointer-events:none}#prog.locked button.on{opacity:1}
 body.cinema #prog{opacity:0;pointer-events:none}
+/* while the win/loss banner sits on the frozen catch frame, the HUD stays out of the way */
+body.held #sit,body.held #badge,body.held #controls,body.held #mute,body.held #banner,body.held #help,body.held #res,body.held #prog,body.held .escHint,body.held #nextHint{opacity:0;pointer-events:none}
 #reveal{inset:0;display:grid;place-items:center;z-index:6;pointer-events:none;background:rgba(4,8,14,.6)}
 #reveal[hidden]{display:none}
 #reveal .rv{display:flex;gap:22px;align-items:center;background:#0d1522;border:1px solid var(--line);border-top:6px solid var(--team);border-radius:16px;padding:22px 26px;max-width:min(640px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.5)}
@@ -333,7 +345,7 @@ body.cinema #cd,body.resultsOn #cd,body.reviewing #cd{display:none!important}
 @media(max-width:820px){#note{display:none}#res .cov{display:none}#sit .big{font-size:24px}#badge b{font-size:22px}#badge{min-width:120px}}
 @media(max-width:600px){#sit #pname{display:none}#sit{padding:8px 10px}#badge{padding:6px 10px 8px}#mute{top:70px}#banner{top:96px;font-size:14px}#help{top:136px;font-size:13px;white-space:normal;text-align:center;width:max-content;max-width:90vw}#res{bottom:auto;top:96px;max-height:30vh}#controls{bottom:10px}#clockNum{bottom:auto;top:120px;right:14px;font-size:32px}}
 @media(max-height:500px){#prog{bottom:50px;padding:4px}#prog button{min-height:34px;padding:0 8px;font-size:13px}#prog .pl{display:none}#note,#help,#sit #pname{display:none}#sit{padding:6px 10px}#sit .big{font-size:20px}#sit small{font-size:12px}#score{font-size:15px}#badge{padding:5px 10px 7px;min-width:110px}#badge b{font-size:20px}#mute{top:62px;min-height:36px}#controls{padding:5px;gap:5px;bottom:6px}#controls button{min-height:36px;font-size:13px;padding:0 9px}.lbl{display:none}#res{bottom:auto;top:auto;bottom:56px;max-height:48vh;font-size:12px;width:min(300px,45vw)}#res .cov,#res .mute+.big+.vs+p+p{display:none}#banner{top:8px;font-size:13px;padding:5px 12px}#clockNum{bottom:auto;top:62px;font-size:28px}}
-@media(prefers-reduced-motion:reduce){#cut.on{animation:none}#cap{transition:none}#flash.on{animation:flr 2.3s steps(1) forwards}@keyframes flr{0%{opacity:1}100%{opacity:0}}#mask{transition:none}}
+@media(prefers-reduced-motion:reduce){#cut.on{animation:none}#cap.on b,#cap.on span{animation:none}#flash.on{animation:flr 2.3s steps(1) forwards}@keyframes flr{0%{opacity:1}100%{opacity:0}}#mask{transition:none}}
 /* ======================= 8-BIT LOOK ======================= */
 *,*::before,*::after{border-radius:0!important}
 :root{--px:4px;--pxc:var(--ink);--pxs:rgba(0,0,0,.6)}
@@ -1305,13 +1317,29 @@ const TIERS=[[.85,'Hall of Famer','Gold jacket. You out-read the pros.'],[.5,'Al
   [-1.7,'Water boy','Hydration is a skill too.'],[-Infinity,'Guy in Section 300','Yelling “just throw it!” at the TV.']];   // .05, worse
 const tierOf=avg=>TIERS.find(t=>avg>=t[0]);
 // per-snap banner: [word, colour class] by how far you were from the pro (a few hundredths is a tie, not a big loss)
+// banner headline from what you actually did: [word, class]; wins celebrate the throw, losses stay low-key
+function snapVerdict(d,P,pl){const ev=P&&P.ev||{},caught=P&&P.kind==='complete',td=P&&P.cine==='td',depth=ev.S?ev.S.y:0,pC=ev.pC||0,gd=ev.gd==null?9:ev.gd,early=P?earlyBy(P):0,
+    proDepth=pl&&pl.pro?pl.pro.spot.y:0,same=pl&&P&&ev.r&&ev.r.id===pl.pro.target;
+  if(d>=.1){const w=td?'TOUCHDOWN!':caught&&gd<1.3?'TIGHT WINDOW!':depth>=32&&pC<.6?(caught?'50/50… WON IT!':'50/50 BALL!'):early>=.4?'ANTICIPATION!':caught&&pC<.5?'WHAT A DIME!':d>=1.5?'HUGE WIN':d>=.5?'BIG WIN':pC>=.8?'EASY MONEY':'WIN';
+    return[w,'win',d>=.5?2:1];}
+  if(d>-.1)return[same?'SAME READ':'DEAD EVEN','even',0];
+  const w=P&&P.sack?'Sacked':P&&P.kind==='int'?'Picked off':gd<1&&!caught?'Too tight':depth>=32&&pC<.4?'Hope ball':depth<6&&proDepth>depth+8?'Too safe':d>-.5?'Close one':d>-1.5?'Not this time':'Oof';
+  return[w,'loss',0];}
 // your real result vs what the pro really got: a positive line when yours turned out better even if the read scored lower
 const OC_RANK={td:4,complete:3,incomplete:2,sack:1,int:0};
+function confetti(level){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;let c=$('confetti');
+  if(!c){c=document.createElement('canvas');c.id='confetti';c.setAttribute('aria-hidden','true');document.body.appendChild(c);}
+  const W=c.width=Math.ceil(innerWidth/3),H=c.height=Math.ceil(innerHeight/3),g=c.getContext('2d'),pl=play(),tc=pl.real&&TEAMC[pl.meta.offT]||['#f5c518','#ffffff'];
+  const cols=[tc[0],tc[1],'#f5c518','#ffffff','#4ade80'],N=level>1?160:70,ps=[];
+  for(let i=0;i<N;i++){const side=i%2?1:-1;ps.push({x:side>0?W*.04:W*.96,y:H*.75,vx:side*(30+Math.random()*110),vy:-(120+Math.random()*120),s:1+Math.random()*2|0,c:cols[i%cols.length],r:Math.random()*6});}
+  const t0=performance.now();let lt=t0;cancelAnimationFrame(c._raf);
+  (function fr(now){const dt=Math.min(.05,(now-lt)/1000);lt=now;g.clearRect(0,0,W,H);
+    for(const p of ps){p.vy+=160*dt;p.vx*=.99;p.x+=p.vx*dt;p.y+=p.vy*dt;p.r+=dt*8;g.fillStyle=p.c;g.fillRect(p.x|0,p.y|0,p.s+(Math.sin(p.r)>0?1:0),p.s+1);}
+    if(now-t0<2600)c._raf=requestAnimationFrame(fr);else g.clearRect(0,0,W,H);})(t0);}
 function outcomeNote(P,pl){if(!pl.real||P.sack||P.away)return '';const pk=pl.pro.result.kind,pr=pl.pro.result,proTD=pk==='complete'&&(pl.pro.spot.y+(pr.yac||0))>=pl.ytg;
   const mk=P.cine==='td'?'td':P.kind,pK=proTD?'td':pk;if(OC_RANK[mk]<=OC_RANK[pK])return '';
   const me={td:'You threw a touchdown',complete:'You completed it',incomplete:'No pick on your throw'}[mk]||'',them={int:'the real pass was picked off',incomplete:'the real pass fell incomplete',complete:'the real pass came up short of the end zone'}[pK]||'';
   return me&&them?'✓ '+me+', '+them+'.':'';}
-const snapVerdict=d=>d>=1.5?['HUGE WIN','win']:d>=.5?['BIG WIN','win']:d>=.1?['WIN','win']:d>-.1?['DEAD EVEN','even']:d>-.5?['CLOSE LOSS','loss']:d>-1.5?['LOSS','loss']:['BIG LOSS','loss'];
 // rank colour band: elite gold, NFL-level green, fringe amber, not-yet red
 const bandOf=t=>t[0]>=.3?'elite':t[0]>=-.4?'good':t[0]>=-.85?'fringe':'low';
 // estimated spread of players' EPA per snap vs the pro: the rank cut-offs' percentiles (tools/calibrate_ranks.js) as a CDF
@@ -1414,7 +1442,7 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
 function loadPlay(i){
   document.querySelectorAll('#diff button').forEach(b=>b.disabled=false);
   tutApply();hintRing.visible=false;trailReset();ghost.visible=pathDots.visible=false;ghostFor=null;S.aimSnap=null;
-  S.pi=i;S.phase='pre';S.t=0;S.plan=null;S.heat=null;S.mine=null;S.pend=null;S.aim=null;S.memoEnd=performance.now()+(S.round&&S.round.kind==='tutorial'?15000:7000);S.advanceAt=0;S.camBlend=0;S.yaw=0;S.pitchOff=0;S.sackHit=false;document.body.classList.remove('playing');S.cadence=false;S.spoke=false;S.cinePos=null;document.body.classList.remove('cinema');$('letter').classList.remove('on');$('cap').classList.remove('on');
+  document.body.classList.remove('held');S.pi=i;S.phase='pre';S.t=0;S.plan=null;S.heat=null;S.mine=null;S.pend=null;S.aim=null;S.memoEnd=performance.now()+(S.round&&S.round.kind==='tutorial'?15000:7000);S.advanceAt=0;S.camBlend=0;S.yaw=0;S.pitchOff=0;S.sackHit=false;document.body.classList.remove('playing');S.cadence=false;S.spoke=false;S.cinePos=null;document.body.classList.remove('cinema');$('letter').classList.remove('on');$('cap').classList.remove('on');
   clearTimeout(S.revealTO);$('reveal').hidden=true;hideReview();const p=play();buildField(p);buildActors(p);buildArrows(p);showArrows(p,false);buildProg(p);S.read=-1;$('prog').hidden=true;$('prog').classList.remove('locked');
   $('dd').textContent=ordinal(p.down)+' & '+(p.dist>=p.ytg?'goal':p.dist);ddFlash(p);$('fp').textContent=fieldPos(p.ytg)+' · '+p.clock;
   $('pname').textContent=(S.round?roundLabel()+' · ':'')+p.name;
@@ -1429,7 +1457,7 @@ function setType(t){S.type=t;$('tFast').setAttribute('aria-pressed',t==='fast');
 function snap(){if(S.tutCard)return;
   if(S.phase==='pre'){if(!S.spoke){if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}AU.stopCadence();if(!AU.hutClip())AU.hut(0);}
     S.phase='run';S.t=0;S.yaw=0;$('snap').disabled=true;document.body.classList.add('playing');banner('');
-    S.hintZone=null;if(S.round&&S.round.kind==='tutorial'&&TUT[0].hint){S.heat=heatmap(play());const bx=S.heat.best.S.x;S.hintZone=ZONES.reduce((bi,z,i)=>Math.abs(z.x-bx)<Math.abs(ZONES[bi].x-bx)?i:bi,0);}
+    if(S.round&&S.round.kind==='tutorial'&&TUT[0].hint)S.heat=heatmap(play());
     if(S.routes){routeGroup.traverse(m=>{if(m.material)m.material.opacity=.42;});showArrows(play(),true);}else scene.remove(routeGroup);
     $('help').textContent=coarse?'Swipe to look around · hold, drag and let go to throw early':'Press '+kn('look0')+' / '+kn('look1')+' / '+kn('look2')+' to look left, middle, right, or hold '+[kn('panL'),kn('panR'),kn('panU'),kn('panD')].join(' ')+' to look around · click to throw early';$('prog').hidden=false;S.read=-1;setRead(1);
     AU.thud(.12,.9);AU.thud(.3,.5);AU.level(.55,.25);setTimeout(()=>{if(S.phase==='run'||S.phase==='decide')AU.level(.8,1.2);},500);S.shake=.25;}
@@ -1441,7 +1469,7 @@ function next(){S.advanceAt=0;hideNext();if(S.round){if(S.round.i<S.round.plays.
 function enterDecide(){AU.slowmo();
   S.phase='decide';S.t=play().T;S.decideAt=performance.now();$('prog').classList.add('locked');showArrows(play(),true);$('help').textContent='';S.lastBeat=0;$('away').disabled=false;AU.level(.62,.4);
   banner(coarse?'Press the field, drag to aim, let go to throw':'');
-  if(S.round&&S.round.kind==='tutorial'&&TUT[0].hint){S.heat=S.heat||heatmap(play());const b=S.heat.best;hintRing.position.copy(V(b.S.x,b.S.y,.06));hintRing.visible=true;setType(b.type);}
+  if(S.round&&S.round.kind==='tutorial'&&TUT[0].hint){S.heat=S.heat||heatmap(play());const b=visibleBest(play(),S.heat);hintRing.position.copy(V(b.S.x,b.S.y,.06));hintRing.visible=true;setType(b.type);}
   document.querySelectorAll('#diff button').forEach(b=>b.disabled=true);
   if(isTut())tutCard('decide');
 }
@@ -1469,7 +1497,7 @@ function showCap(P){const pl=play();let sub='';const id=P.ev&&P.ev.r?(P.ev.r.lab
   else if(P.cine==='miss')sub={over:'Sailed past '+id,behind:id+' couldn\'t get back to it',short:'Died in front of '+id,wide:'Nobody could get there'}[P.ev.miss]||'Nobody could get there';
   else if(P.cine==='tip')sub='Knocked down short of the receiver';
   else if(P.cine==='sack')sub='−7 yards';
-  $('cap').querySelector('b').textContent=P.cine==='miss'?({over:'Overthrown',behind:'Thrown behind',short:'Underthrown',wide:'Out of reach'}[P.ev.miss]||'Out of reach'):CAP[P.cine];$('cap').querySelector('span').textContent=sub;$('cap').classList.add('on');}
+  $('cap').querySelector('b').textContent=P.cine==='miss'?({over:'Overthrown',behind:'Thrown behind',short:'Underthrown',wide:'Out of reach'}[P.ev.miss]||'Out of reach'):CAP[P.cine];$('cap').querySelector('span').textContent=sub;const cc=$('cap');cc.classList.remove('on','good','bad','td');void cc.offsetWidth;cc.classList.add('on',P.cine==='td'?'td':['catch','dive'].includes(P.cine)?'good':'bad');}
 function enterCinema(){document.body.classList.add('cinema');$('letter').classList.add('on');const c=$('cut');c.classList.remove('on');void c.offsetWidth;c.classList.add('on');}
 function finish(){const P=S.plan;
   if(P&&P.cine&&!P.cineDone&&S.phase!=='cine'){S.phase='cine';S.cineStart=performance.now();S.cineDur=P.cine==='sack'?2700:2100;
@@ -1491,14 +1519,14 @@ function finishReal(){
       thrown,kind:P.sack?'sack':P.away?'away':P.kind,pC:thrown?P.ev.pC:0,pI:thrown?P.ev.pI:0,air:thrown&&P.ev.S?P.ev.S.y:null,type:P.type,early:earlyBy(P),
       proPC:pro.pC,proPI:pro.pI,proAir:pl.pro.spot.y,proType:pl.pro.type,proKind:pl.pro.result.kind,proText:pl.real?pl.pro.text:''};
     const B=S.heat&&S.heat.best;if(B){const w=whyBest(B,P);Object.assign(S.round.res[S.round.i],{best:w.short,bestEpa:B.epa,why:w.why,found:w.found});}}
-  const f=$('flash');f.className='hud';void f.offsetWidth;const vd=snapVerdict(diff);f.className='hud on '+vd[1];
+  const f=$('flash');f.className='hud';void f.offsetWidth;const vd=snapVerdict(diff,P,pl);document.body.classList.add('held');f.className='hud on '+vd[1];if(vd[2]&&!P.replay)confetti(vd[2]);
   f.querySelector('b').textContent=vd[0];ANN.say(diff>=.5?'beat-pro-big':diff>=0?'beat-pro':diff<=-1.5?'blunder':diff<=-.5?'lost-big':'lost');
   f.querySelector('span').textContent=Math.abs(diff)<.005?'You matched the pro':(diff>0?'You beat the pro by ':Math.abs(diff)<.1?'The pro edged you by ':'The pro beat you by ')+Math.abs(diff).toFixed(2)+' EPA';
   const oc=outcomeNote(P,pl);f.querySelector('i').textContent=oc;f.querySelector('i').hidden=!oc;
   f.querySelector('em').textContent=describe(P)+(earlyBy(P)?' · released '+earlyBy(P).toFixed(1)+' s before the pro':'')+(last?' · Round total '+fmt(tot)+' EPA vs the pros':'');
   if(isTut())setTimeout(()=>{if(isTut()&&S.phase==='done'&&play()===pl)tutCard('done');},2600);
   holdHere();
-  S.revealTO=setTimeout(()=>{if(S.phase!=='done'||play()!==pl)return;enterReview(pl,P,pro);if(pl.real)showReveal(pl,mine,pro.epa);showNext();},2300);
+  S.revealTO=setTimeout(()=>{document.body.classList.remove('held');if(S.phase!=='done'||play()!==pl)return;enterReview(pl,P,pro);if(pl.real)showReveal(pl,mine,pro.epa);showNext();},2300);
   const lvl=S.limit?S.limit/1000+' s clock':'no clock',target=P.sack?'No throw':P.away?'Out of bounds':(P.ev.r.label||P.ev.r.id)+', '+(P.type==='fast'?'fastball':'touch');
   const bst=S.heat.best;
   $('res').innerHTML=`<details><summary><span class="mute">Last play</span><b class="${diff>=0?'pos':'neg'}">${diff>=0?'Won':'Lost'} ${fmt(diff)}</b><span>You ${fmt(mine)} · Pro ${fmt(pro.epa)}</span></summary>
@@ -1568,6 +1596,10 @@ function clearAngle(P,F,base,r,excl){let best=base,bs=-1e9;
   for(let k=-7;k<=7;k++){const an=base+k*.24,C={x:F.x+Math.cos(an)*r,y:F.y+Math.sin(an)*r};if(C.x<-5||C.x>W+5)continue;let m=9;
     for(const a of actors){if(excl.includes(a.id)||a.id==='QB')continue;const q=P.cur[a.id];if(q)m=Math.min(m,segD(q,C,F));}
     const sc=Math.min(m,2.5)-Math.abs(k)*.06;if(sc>bs){bs=sc;best=an;}}return best;}
+// tutorial hint: the best throw among spots inside the player's current view (the camera is never turned for them)
+function visibleBest(pl,heat){cam.updateMatrixWorld();const ok=c=>{const v=V(c.x,c.y,0).project(cam);return v.z<1&&Math.abs(v.x)<.85&&v.y>-.8&&v.y<.75;};
+  const seen=heat.cells.filter(ok).sort((a,b)=>b.v-a.v);if(!seen.length)return heat.best;
+  const c=seen[0],f=evaluate(pl,{x:c.x,y:c.y},'fast'),t=evaluate(pl,{x:c.x,y:c.y},'touch');return f.epa>t.epa?f:t;}
 function focusId(P){const ev=P.ev;if(P.cine==='int')return(P.sub==='tip'?ev.laneD:ev.pd).key;return ev.r.id;}
 function cineCam(P,dt,now,first){const pl=play();let target,look;
   if(P.cine==='sack'){const q=pos(pl,qbOf(pl),pl.T),ct=(now-S.cineStart)/1000,an=.15+ct*.3;
@@ -1881,7 +1913,9 @@ function update(dt,sdt,now){
   const cinema=S.phase==='cine'||(P&&P.cine&&P.cine!=='sack'&&S.phase==='throw'&&P.ev&&S.t>=tbOf(P)-.55);
   if(P&&P.ev&&!P.sack&&!P.away&&!P.sfx&&S.t>=tbOf(P)){P.sfx=true;impactSfx(P);}
   if(P&&P.cine&&!P.capShown&&(S.phase==='cine'||(P.ev&&!P.sack&&S.t>=tbOf(P)))){P.capShown=true;showCap(P);}
-  if(S.reviewOn&&!cinema){cam.position.lerp(S.revCam.pos,Math.min(1,dt*2.6));cc.look.lerp(S.revCam.look,Math.min(1,dt*3));cam.lookAt(cc.look);heldBall.visible=false;$('mask').classList.remove('on');
+  const holdFrame=S.phase==='done'&&P&&P.cineOn&&!P.replay&&!S.reviewOn;   // banner over the frozen catch frame: the camera stays where the cutscene left it
+  if(holdFrame){heldBall.visible=false;qbA.g.visible=true;$('mask').classList.remove('on');}
+  else if(S.reviewOn&&!cinema){cam.position.lerp(S.revCam.pos,Math.min(1,dt*2.6));cc.look.lerp(S.revCam.look,Math.min(1,dt*3));cam.lookAt(cc.look);heldBall.visible=false;$('mask').classList.remove('on');
     const ft=cam.aspect<1?70:50;if(Math.abs(cam.fov-ft)>.05){cam.fov+=(ft-cam.fov)*Math.min(1,dt*3);cam.updateProjectionMatrix();}}
   else if(cinema){if(!P.cineOn){P.cineOn=true;enterCinema();cineCam(P,dt,now,true);}else cineCam(P,dt,now,false);
     if(P.cine!=='sack')qbA.g.visible=true;heldBall.visible=false;$('mask').classList.remove('on');}
@@ -1946,7 +1980,7 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;
       const ok=AU.cadence(()=>{if(S.phase==='pre'&&S.cadence){S.spoke=true;snap();}});if(ok)S.memoEnd=Math.max(S.memoEnd,now+(AU.cadMs||3400));else S.cadence=false;}   // never push the countdown back (it made the number jump 1 → 2 → 1)
     if(S.phase==='pre'&&now>=S.memoEnd+(S.cadence?400:0))snap();   // with a call playing, the hut snaps the ball; the timer is only a fallback
     else if(S.phase==='done'&&S.advanceAt&&now>=S.advanceAt)next();
-    if(S.phase==='run'){sdt=dt;S.t+=dt;if(!S.dbSaid&&S.t>=.3){S.dbSaid=true;S.dbPick=ANN.sayFit('dropback',pl.T-S.t-.25);S.dbWindow=pl.T-S.t;}if(S.hintZone!=null&&S.t>pl.T-.9&&S.read!==S.hintZone)setRead(S.hintZone);if(S.t>=pl.T){S.t=pl.T;enterDecide();}}
+    if(S.phase==='run'){sdt=dt;S.t+=dt;if(!S.dbSaid&&S.t>=.3){S.dbSaid=true;S.dbPick=ANN.sayFit('dropback',pl.T-S.t-.25);S.dbWindow=pl.T-S.t;}if(S.t>=pl.T){S.t=pl.T;enterDecide();}}
     if(hintRing.visible){const k=1+.12*Math.sin(now/180);hintRing.scale.set(k,k,k);}
     else if(S.phase==='decide'&&S.limit&&now-S.decideAt>S.limit){S.pend=null;S.aim=null;startThrow(sackPlan(),true);}
     else if(S.phase==='cine'&&now-S.cineStart>S.cineDur)endCine();
@@ -1956,7 +1990,7 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;
   update(dt,sdt,now);renderer.render(scene,cam);requestAnimationFrame(loop);}
 setType('touch');buildField(PLAYS[0]);buildActors(PLAYS[0]);requestAnimationFrame(loop);
 window.__chest=id=>{const pl=play(),o=pl.byId[id],q=pos(pl,o,S.phase==='run'?S.t:pl.T),v=V(q.x,q.y,1.3).project(cam),r=cv.getBoundingClientRect();return v.z>1?null:[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height];};window.__dbg=(id,x,y)=>{const pl=play(),o=pl.byId[id];return{rec:pos(pl,o,pl.T),aim:groundAt(x,y),cam:[cam.position.x+MID,-cam.position.z,cam.position.y]};};window.__pathPt=(i,k)=>{const L=PATH.list[i];if(!L)return null;const p=L.pts[Math.min(k,L.pts.length-1)],v=V(p.x,p.y,1).project(cam),r=cv.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height,L.r.id,p.t];};window.__ghost=()=>[ghost.visible,ghost.position.x,ghost.position.z];window.__setArt=setArt;window.__rx=()=>actors.filter(a=>a.off&&a.p&&!a.p.big).map(a=>[a.id,+a.v.toFixed(1),a.g.userData.rig.st.up,+a.g.position.y.toFixed(2)]);window.__atlas=(st,side,num)=>{const o=ART.cur;ART.cur=st;const t=drawCutout(KIT[side],num,SKINC[(num*7)%SKINC.length]);ART.cur=o;return t.image.toDataURL();};window.__S=S;window.__ANN=ANN;window.__begin=begin;window.__PLAYS=PLAYS;window.__showResults=()=>showResults();
-window.__force=(x,y,type,kind,sub,yac)=>{const P=makePlan({x,y},type,{kind,yac:yac||0});if(sub)P.sub=sub;startThrow(P,true);};window.__load=i=>loadPlay(i);
+window.__force=(x,y,type,kind,sub,yac)=>{const P=makePlan({x,y},type,{kind,yac:yac||0});if(sub)P.sub=sub;startThrow(P,true);};window.__load=i=>loadPlay(i);window.__confetti=confetti;window.__ring=()=>{if(!hintRing.visible)return null;const v=hintRing.position.clone().project(cam);return[+v.x.toFixed(2),+v.y.toFixed(2),v.z<1];};window.__verdict=snapVerdict;
 }
 </script>
 </body>
