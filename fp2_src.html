@@ -200,7 +200,7 @@ body.held #sit,body.held #badge,body.held #controls,body.held #mute,body.held #b
 #legend[hidden]{display:none}
 #legend .cmp{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:16px}#legend .cmp em{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:20px}#legend .cmp .vs,#legend .cmp .u{color:var(--mute)}
 /* phones: keep the after-play screen simple (no Space prompt, no stat lines, just the pro's replay) and drop the throw-type and clock pickers (touch pass, 3 s clock) */
-@media(pointer:coarse){#nextHint{display:none!important}
+@media(pointer:coarse){
   #legend>div:not(.rb):not(.cmp),#legend .why,#legend #rpMine,#legend #rpAgain{display:none}#legend .rb{margin-top:0}
   #controls .seg[aria-label="Throw type"],#controls .lbl,#controls #diff{display:none}}
 #legend .rb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#legend .rb button{min-height:38px;padding:0 12px;font-size:14px}#legend b{font-weight:700}#legend .gap{width:14px}
@@ -388,9 +388,10 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
   background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 14%),linear-gradient(0deg,rgba(255,255,255,.1),rgba(255,255,255,0) 10%)}
 .tutBox,.fqBox,.tutBox h2{text-shadow:0 2px 0 rgba(0,0,0,.55)}
 /* next-play prompt: just pulsing text above the bottom bar, no box */
-#nextHint{top:auto!important;bottom:96px;left:max(calc(50% + 230px),720px);transform:translateX(-50%);background:none!important;border:0!important;box-shadow:none!important;padding:6px 10px;
-  color:#fff;font:400 clamp(15px,1.7vw,20px)/1.2 "Retro",system-ui,sans-serif;text-shadow:3px 3px 0 #000,0 0 14px rgba(0,0,0,.7);animation:nh 1.6s ease-in-out infinite}
+#nextHint{top:50%!important;bottom:auto;left:50%;margin-top:-1em;transform:translateX(-50%);background:none!important;border:0!important;box-shadow:none!important;padding:6px 10px;
+  color:#fff;font:400 clamp(17px,2.2vw,26px)/1.2 "Retro",system-ui,sans-serif;text-shadow:3px 3px 0 #000,0 0 14px rgba(0,0,0,.7);animation:nh 1.6s ease-in-out infinite}
 #nextHint kbd{border:0;background:none;padding:0;color:var(--gold)}
+.tutBody p{margin:0 0 10px;line-height:1.35}.tutBody .tutMeta{color:var(--mute);font-size:.85em}.tutBody .tutCmp{font-family:"Retro",system-ui,sans-serif;font-size:18px}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js"}}</script>
 </head>
@@ -1219,7 +1220,7 @@ function enterReview(pl,P,pro){const qb=pos(pl,qbOf(pl),pl.T),pts=[qb,pl.pro.spo
   $('legend').hidden=false;}
 // after a play nothing moves on by itself: a prompt in the middle of the screen waits for Space (or a tap on it)
 function showNext(){if(isTut()||S.phase!=='done'||!S.round)return;const last=S.round.i>=S.round.plays.length-1;
-  $('nextHint').innerHTML=(coarse?'Tap here':'Press <kbd>'+kn('snap')+'</kbd>')+(last?' to see your results':' for the next play');$('nextHint').hidden=false;}
+  $('nextHint').innerHTML=(coarse?'Tap':'Press <kbd>'+kn('snap')+'</kbd>')+(last?' to see your results':' for the next play');$('nextHint').hidden=false;}
 const hideNext=()=>{$('nextHint').hidden=true;};
 function holdHere(){S.advanceAt=0;$('snap').textContent='Next play'+kp('snap');$('snap').disabled=false;}
 function replay(which){const pl=play();if(S.phase!=='done')return;const M=S.mine;if(which==='mine'&&(!M||M.sack||M.away))return;
@@ -1279,21 +1280,26 @@ function syncDiff(){document.querySelectorAll('#diff button').forEach(x=>x.setAt
 const TUT=[{routes:false,limit:0,hint:true}],TUT_KEY='2018_NE_2018093006_1120';
 function tutPlays(){const i=PLAYS.findIndex(p=>p.real&&p.meta.key===TUT_KEY);return[i>=0?i:PLAYS.findIndex(p=>p.real&&!p.bdb)];}
 const K=t=>`<kbd>${t}</kbd>`,isTut=()=>!!(S.round&&S.round.kind==='tutorial');
-function tutCard(step){const pl=play(),m=pl.meta||{},qb=pl.real?pl.qb.name:'the quarterback',last=qb.split(' ').pop(),tap=coarse?'Tap':'Click',li=(n,h)=>`<li data-n="${n}"><span>${h}</span></li>`;
+function tutCard(step){const pl=play(),m=pl.meta||{},qb=pl.real?pl.qb.name:'the quarterback',last=qb.split(' ').pop(),P=t=>`<p>${t}</p>`;
+  const look=coarse?'Swipe left and right to look around.':`Press ${K(kn('look0'))} ${K(kn('look1'))} ${K(kn('look2'))} to look left, middle and right through your progressions, or hold the arrow keys for smoother movement.`;
   const card={
-    pre:['Tutorial · before the snap','This is a real NFL play',`<ol>${li(1,`<b>Real game data.</b> Every player is exactly where he was on the field: ${esc(qb)}, ${esc(m.offName||'')} vs ${esc(m.defName||'')}, ${esc(m.date||'')}. Tracked by NFL Next Gen Stats.`)}
-      ${li(2,`<b>At the snap you become the quarterback.</b> You’re transported into his first-person view, and the route lines disappear, so memorize them now. ${coarse?'Swipe left or right to look around, or tap Left, Middle or Right.':`Press ${K(kn('look0'))} ${K(kn('look1'))} ${K(kn('look2'))} to look left, middle or right, or hold ${K(kn('panL'))}${K(kn('panR'))}${K(kn('panU'))}${K(kn('panD'))} to look around.`}`)}</ol>`,'Got it, show me the routes'],
-    decide:['Tutorial · the freeze','Slow motion. This is when he threw it.',`<ol>${li(3,`<b>The game slows to a freeze at the exact moment ${esc(qb)} let the ball go.</b> Now it’s your call: ${coarse?'press the field, drag to the spot where your pass should land, and let go':'click the spot on the field where your pass should land'}. Lead the receiver and aim where he’s going, not where he is. The <b style="color:#4ade80">green ring</b> marks the best spot on this play. ${coarse?'':K(kn('fast'))+' fastball, '+K(kn('touch'))+' touch.'}`)}</ol>`,'Got it, let me throw'],
+    pre:['Tutorial · 1 of 4','This is a real NFL play',P('Real game data: every player is exactly where they were on the field, motion-tracked by NFL Next Gen Stats.')+(pl.real?`<p class="tutMeta">${esc(qb)} · ${esc(m.offName||'')} vs ${esc(m.defName||'')} · ${esc(m.date||'')}</p>`:''),'Next'],
+    pre2:['Tutorial · 2 of 4','At the snap, you become the quarterback',P('Memorize the routes now: they disappear at the snap.')+P(`When ${esc(last)} really threw the ball, we freeze the frame, and you decide exactly where it goes.`),'Next'],
+    pre3:['Tutorial · 3 of 4','Find your read',P('Make sure you’re looking at the right receiver when the freeze comes.')+P(look),'Show me the play'],
+    decide:['Tutorial · 4 of 4','The time is now',P(coarse?'Press the field, drag to where you want the ball to land, and let go.':'Click the spot on the field where you want the ball to land.')+
+      P(`No clock this time. In real rounds you get ${coarse?5:3} seconds.`)+P('The <b style="color:#4ade80">green ring</b> is the best spot you can see from where you’re looking.'),'Got it'],
     done:null}[step];
   if(step==='done'){const r=S.round.res[S.round.i]||{},won=r.diff>=0;
-    card_=['Tutorial · your score',won?'You beat '+last+'.':last+' wins this one.',`<ol>${li(4,`<b>You’re scored on EPA (expected points added) against the pro’s real throw.</b> You: <b class="${r.mine>=0?'pos':'neg'}">${fmt(r.mine||0)}</b> · ${esc(last)}: <b class="${r.pro>=0?'pos':'neg'}">${fmt(r.pro||0)}</b>. Gold is your throw, blue is his, green was the best read.`)}</ol><p>Today’s 6 is six real plays, the same for everyone. <b>Can you do it?</b></p>`,'Play today’s 6'];
+    card_=['Tutorial · your score',won?'You beat '+last+'.':last+' wins this one.',P(`You’re scored in EPA (expected points added) for your decision, against ${esc(last)}’s real throw.`)+
+      `<p class="tutCmp">You <b class="${r.mine>=0?'pos':'neg'}">${fmt(r.mine||0)}</b> · ${esc(last)} <b class="${r.pro>=0?'pos':'neg'}">${fmt(r.pro||0)}</b></p>`+P('Today’s 6: six real plays, the same for everyone. <b>Can you beat the pros?</b>'),'Play today’s 6'];
     return show(card_,'Home');}
   return show(card);
   function show(c,alt){S.tutCard=step;const el=$('tut');el.querySelector('small').textContent=c[0];el.querySelector('h2').textContent=c[1];el.querySelector('.tutBody').innerHTML=c[2];
     $('tutOk').textContent=c[3];$('tutAlt').hidden=!alt;if(alt)$('tutAlt').textContent=alt;el.hidden=false;setTimeout(()=>$('tutOk').focus({preventScroll:true}),30);}}
 let card_;
 function tutClose(){if(!S.tutCard)return;const st=S.tutCard;S.tutCard=null;$('tut').hidden=true;cv.focus&&cv.focus({preventScroll:true});
-  if(st==='pre'){S.memoEnd=performance.now()+12000;banner('Memorize the routes');$('help').textContent=coarse?'Tap Snap now when you’re ready':'Press '+kn('snap')+' to snap when you’re ready';}
+  if(st==='pre'){tutCard('pre2');return;}if(st==='pre2'){tutCard('pre3');return;}
+  if(st==='pre3'){S.memoEnd=performance.now()+12000;banner('Memorize the routes');$('help').textContent=coarse?'Tap Snap now when you’re ready':'Press '+kn('snap')+' to snap when you’re ready';}
   else if(st==='done'){store.set('tutDone','1');startRound('daily');}}
 $('tutOk').onclick=()=>tutClose();$('nextHint').onclick=()=>{if(S.phase==='done')next();};$('tutAlt').onclick=()=>{S.tutCard=null;$('tut').hidden=true;store.set('tutDone','1');goHome();};
 function tutUpdate(){}
@@ -1455,7 +1461,7 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
 function loadPlay(i){
   document.querySelectorAll('#diff button').forEach(b=>b.disabled=false);
   tutApply();hintRing.visible=false;trailReset();ghost.visible=pathDots.visible=false;ghostFor=null;S.aimSnap=null;
-  document.body.classList.remove('held');S.pi=i;S.phase='pre';S.t=0;S.plan=null;S.heat=null;S.mine=null;S.pend=null;S.aim=null;S.memoEnd=performance.now()+(S.round&&S.round.kind==='tutorial'?15000:7000);S.advanceAt=0;S.camBlend=0;S.yaw=0;S.pitchOff=0;S.sackHit=false;document.body.classList.remove('playing');S.cadence=false;S.spoke=false;S.cinePos=null;document.body.classList.remove('cinema');$('letter').classList.remove('on');$('cap').classList.remove('on');
+  document.body.classList.remove('held');{const f=$('flash');f.className='hud';const c=$('confetti');if(c){cancelAnimationFrame(c._raf);c.getContext('2d').clearRect(0,0,c.width,c.height);}}S.pi=i;S.phase='pre';S.t=0;S.plan=null;S.heat=null;S.mine=null;S.pend=null;S.aim=null;S.memoEnd=performance.now()+(S.round&&S.round.kind==='tutorial'?15000:7000);S.advanceAt=0;S.camBlend=0;S.yaw=0;S.pitchOff=0;S.sackHit=false;document.body.classList.remove('playing');S.cadence=false;S.spoke=false;S.cinePos=null;document.body.classList.remove('cinema');$('letter').classList.remove('on');$('cap').classList.remove('on');
   clearTimeout(S.revealTO);$('reveal').hidden=true;hideReview();const p=play();buildField(p);buildActors(p);buildArrows(p);showArrows(p,false);buildProg(p);S.read=-1;$('prog').hidden=true;$('prog').classList.remove('locked');
   $('dd').textContent=ordinal(p.down)+' & '+(p.dist>=p.ytg?'goal':p.dist);ddFlash(p);$('fp').textContent=fieldPos(p.ytg)+' · '+p.clock;
   $('pname').textContent=(S.round?roundLabel()+' · ':'')+p.name;
@@ -1689,9 +1695,18 @@ cv.addEventListener('pointerleave',()=>{if(!down)S.ptr=null;});
 /* ---------- touch: swipe to look around; press, drag and release to throw ----------
    During the play a quick swipe turns your head; holding still for a moment picks up the ball (early throw), then drag to aim and let go.
    At the freeze the view is locked, so any press aims straight away. The aim point sits a little above the finger so you can see it;
-   drag off the field and let go to cancel. Mouse keeps click-to-throw. */
+   a finger past the field pins the aim to the nearest in-bounds spot; drag down onto the bottom bar and let go to cancel. Mouse keeps click-to-throw. */
 const TOUCH_UP=56,HOLD_MS=230,LOOK_SENS=2.4,isTouch=e=>e.pointerType!=='mouse';
-function touchAim(x,y){const a=aimPick(x,y-TOUCH_UP);S.aim=a?a.f:null;S.aimSnap=null;return a;}
+// phones: the aim never vanishes. A finger past the field pins the ball to the nearest in-bounds spot; dragging down onto the bottom bar cancels.
+function floorClamp(cx,cy){const r=renderer.domElement.getBoundingClientRect();ndc.set((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam);
+  const yMax=Math.min(play().ytg+10,58);let f;
+  if(ray.ray.intersectPlane(ground,tmp))f={x:tmp.x+MID,y:-tmp.z};
+  else{const d=ray.ray.direction,h=Math.hypot(d.x,d.z)||1e-3,c={x:cam.position.x+MID,y:-cam.position.z};f={x:c.x+d.x/h*200,y:c.y-d.z/h*200};}   // above the horizon: as deep as allowed in that direction
+  const c={x:cam.position.x+MID,y:-cam.position.z};if(f.y>yMax&&f.y>c.y){const k=(yMax-c.y)/(f.y-c.y);f={x:c.x+(f.x-c.x)*k,y:yMax};}   // too deep: pull back along the line of the throw
+  return{x:Math.max(.5,Math.min(W-.5,f.x)),y:Math.max(-6,Math.min(yMax,f.y))};}
+const cancelZone=y=>y>innerHeight*.86;
+function touchAim(x,y){if(cancelZone(y)){S.aim=null;S.aimSnap=null;banner('Let go here to cancel');S.cancelMsg=true;return null;}
+  const f=floorClamp(x,y-TOUCH_UP);S.aim=f;S.aimSnap=null;if(S.cancelMsg)banner('');S.cancelMsg=false;return{f,snap:null};}
 function clearRead(){if(S.read>=0){S.read=-1;$('prog').querySelectorAll('button').forEach(b=>b.classList.remove('on'));}}
 cv.addEventListener('pointerdown',e=>{down={x0:e.clientX,y0:e.clientY,lx:e.clientX,ly:e.clientY,mode:null};if(!isTouch(e))return;
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
@@ -1704,7 +1719,7 @@ cv.addEventListener('pointermove',e=>{const d=down;if(!d||!isTouch(e))return;con
     S.yaw=Math.max(-1.45,Math.min(1.45,S.yaw-dx*LOOK_SENS/Math.max(320,innerWidth)));}});
 cv.addEventListener('pointercancel',()=>{if(down)clearTimeout(down.holdTO);down=null;S.aim=null;});
 cv.addEventListener('pointerup',e=>{if(!isTouch(e))return;const d=down;down=null;if(!d)return;clearTimeout(d.holdTO);
-  if(d.mode==='aim'){const a=touchAim(e.clientX,e.clientY);S.aim=null;if(!a){banner('Cancelled · drag onto the field to throw');return;}
+  if(d.mode==='aim'){const a=touchAim(e.clientX,e.clientY);S.aim=null;if(!a){banner('Cancelled');S.cancelMsg=false;return;}
     if(S.phase==='run')startThrow(makePlan(a.f,S.type,null,S.t),true);else if(S.phase==='decide')startThrow(makePlan(a.f,S.type,null),true);return;}
   if(d.mode==='look')return;
   if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}
@@ -1990,7 +2005,7 @@ let last=performance.now();
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;
   if(S.paused){requestAnimationFrame(loop);return;}   // Esc menu: the play is frozen; closePause() shifts the deadlines
   if(S.phase!=='idle'){const pl=play();
-    if(S.tutCard==='pre')S.memoEnd=Math.max(S.memoEnd,now+12000);
+    if(S.tutCard&&S.tutCard.startsWith('pre'))S.memoEnd=Math.max(S.memoEnd,now+12000);
     if(S.phase==='pre'&&!S.cadence&&S.memoEnd-now<AU.callLead()&&AU.canCall()){ANN.stop();S.cadence=true;AU.level(.14,.4);
       const ok=AU.cadence(()=>{if(S.phase==='pre'&&S.cadence){S.spoke=true;snap();}});if(ok)S.memoEnd=Math.max(S.memoEnd,now+(AU.cadMs||3400));else S.cadence=false;}   // never push the countdown back (it made the number jump 1 → 2 → 1)
     if(S.phase==='pre'&&now>=S.memoEnd+(S.cadence?400:0))snap();   // with a call playing, the hut snaps the ball; the timer is only a fallback

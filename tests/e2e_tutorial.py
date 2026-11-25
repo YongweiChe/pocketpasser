@@ -10,9 +10,12 @@ async def main():
     await pg.route('**/three.module.min.js',lambda r:r.fulfill(status=200,content_type='application/javascript',body=THREE))
     await pg.route('**/fonts.googleapis.com/**',lambda r:r.abort())
     await pg.goto((ROOT/'beat-the-pro-qb-cam.html').as_uri());await pg.wait_for_timeout(2500);await pg.screenshot(path='out_m0.png')
-    # first visit: the main button asks about the tutorial; yes = one real play with four centred cards, then today's 6
+    # first visit: the main button asks about the tutorial; yes = one real play: three opening cards, the freeze card, the score card, then today's 6
     await pg.click('#go');await pg.wait_for_timeout(300);await pg.click('#fqYes');await pg.wait_for_timeout(1200)
-    cards=[await pg.evaluate("__S.tutCard")];await pg.screenshot(path='out_m1.png');await pg.keyboard.press('Space');await pg.wait_for_timeout(300);await pg.keyboard.press('Space')
+    cards=[await pg.evaluate("__S.tutCard")];await pg.screenshot(path='out_m1.png')
+    for k in range(2):   # three opening cards: real play -> at the snap -> find your read
+      await pg.keyboard.press('Space');await pg.wait_for_timeout(300);cards.append(await pg.evaluate("__S.tutCard"))
+    await pg.keyboard.press('Space');await pg.wait_for_timeout(300);await pg.keyboard.press('Space')
     for i in range(80):
       if await pg.evaluate("__S.phase")=='decide':break
       await pg.wait_for_timeout(150)
