@@ -1868,7 +1868,7 @@ function update(dt,sdt,now){
     if(b.air&&!b.tumble)ball.userData.b.rotation.z+=sdt*28;if(b.tumble&&b.air){ball.rotation.x+=sdt*13;ball.rotation.y+=sdt*8;}}
   else ball.visible=false;
   // labels fade while memorizing vs live
-  for(const a of actors){const l=a.g.userData.label;if(l){l.material.opacity=S.phase==='pre'?1:.85;l.visible=!cinema&&(S.phase==='pre'||S.reviewOn||a.g.position.distanceTo(cam.position)>7);}}
+  for(const a of actors){const l=a.g.userData.label;if(l){const fp=S.phase!=='pre'&&!S.reviewOn;l.material.opacity=fp?.5:1;const k=fp?.62:1;l.userData.w=l.userData.w||l.scale.x;l.scale.set(l.userData.w*k,.75*k,1);l.position.y=fp?2.45:2.65;l.visible=!cinema&&(S.phase==='pre'||S.reviewOn||a.g.position.distanceTo(cam.position)>7);}}
   for(const a of actors)syncCard(a.g,dt);for(const L of linemenA)syncCard(L.g,dt);
   if(S.phase==='decide'||(S.phase==='run'&&S.routes))drawArrows(pl);
   // aiming
