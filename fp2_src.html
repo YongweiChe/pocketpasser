@@ -1184,7 +1184,7 @@ const RV={you:{arc:dotArc(0xffd23f,34,.16),line:ribbon(0xffd23f),spot:ringM(0xff
 function placeThrow(o,from,to,rec,fl,type){if(fl){setArc(o.arc,from,to,fl,type);}else o.arc.visible=false;const a=V(from.x,from.y,.06),b=V(to.x,to.y,.06),L=a.distanceTo(b);
   o.line.scale.set(.42,L,1);o.line.position.copy(a).add(b).multiplyScalar(.5);o.line.rotation.set(-Math.PI/2,0,Math.atan2(-(b.x-a.x),-(b.z-a.z)));
   o.spot.position.copy(V(to.x,to.y,.08));o.tag.position.copy(V(to.x,to.y,2.4));
-  if(rec){o.rec.position.copy(V(rec.x,rec.y,.07));o.rec.visible=true;}else o.rec.visible=false;
+  o.rec.visible=false;   // no ring around the targeted receiver in the review (it muddied the picture)
   o.line.visible=o.spot.visible=o.tag.visible=true;o.line.material.opacity=fl?.35:.95;o.line.scale.x=fl?.18:.42;}
 const earlyBy=P=>P&&P.ev&&P.ev.T!=null&&!P.sack&&!P.away?Math.max(0,play().T-P.ev.T)>.05?play().T-P.ev.T:0:0;
 function hideReview(){S.reviewOn=false;for(const k of ['you','pro','best'])for(const m of Object.values(RV[k]))m.visible=false;$('legend').hidden=true;$('reveal').classList.remove('side');document.body.classList.remove('reviewing');}
