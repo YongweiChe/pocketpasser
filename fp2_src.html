@@ -67,12 +67,13 @@ body.playing #res{display:none}
 #help{left:50%;top:62px;transform:translateX(-50%);font-size:14px;color:var(--mute);padding:5px 12px;border-radius:999px;background:rgba(0,0,0,.35);white-space:nowrap;pointer-events:none}
 #help:empty{display:none}
 #flash{inset:0;display:grid;place-content:center;text-align:center;pointer-events:none;opacity:0;z-index:5}
-#flash.on{animation:fl 2.3s ease forwards}
+#flash.on{animation:fl 4.2s ease forwards}
 #flash.win{background:radial-gradient(ellipse at center,rgba(10,60,32,.25) 30%,rgba(10,60,32,.7))}
 #flash.win b{color:#fff;text-shadow:6px 6px 0 #0a3c20,0 0 30px rgba(0,0,0,.5)}
-#flash.loss{background:radial-gradient(ellipse at center,rgba(0,0,0,.15) 30%,rgba(0,0,0,.6))}
+#flash.loss{background:radial-gradient(ellipse at center,rgba(0,0,0,.68) 25%,rgba(0,0,0,.85))}
+#flash.loss,#flash.even{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 #flash.loss b{font-size:clamp(40px,8vw,104px);color:#e9e6df;text-shadow:4px 4px 0 #000}#flash.loss span{font-size:clamp(16px,2.4vw,26px);color:#d6d6d6}
-#flash.even{background:radial-gradient(ellipse at center,rgba(20,28,42,.2) 30%,rgba(20,28,42,.65))}
+#flash.even{background:radial-gradient(ellipse at center,rgba(8,12,20,.66) 25%,rgba(8,12,20,.85))}
 #flash.even b{font-size:clamp(48px,10vw,130px);text-shadow:5px 5px 0 #000}
 #flash span,#flash em,#flash i{text-shadow:2px 2px 0 #000}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;image-rendering:pixelated}
@@ -80,7 +81,7 @@ body.playing #res{display:none}
 #flash span{font-family:"Retro",system-ui,sans-serif;font-size:clamp(22px,3.4vw,38px);font-weight:700}
 #flash i{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:clamp(14px,1.8vw,20px);color:#b9f6c9;margin-top:10px}#flash i[hidden]{display:none}
 #flash em{font-style:normal;font-size:clamp(16px,2vw,22px);margin-top:6px}
-@keyframes fl{0%{opacity:0;transform:scale(1.25)}8%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0}}
+@keyframes fl{0%{opacity:0;transform:scale(1.25)}5%{opacity:1;transform:scale(1)}88%{opacity:1}100%{opacity:0}}
 #mute{right:14px;top:84px;min-width:44px;padding:0 10px;background:var(--glass)}
 [hidden]{display:none!important}
 /* ---------- home page: the orbiting stadium shows through on the right ---------- */
@@ -156,7 +157,7 @@ body.cinema #sit,body.cinema #badge,body.cinema #controls,body.cinema #mute,body
 body.cinema #tut,body.cinema #nextHint{display:none}
 #nextHint{left:50%;top:50%;transform:translate(-50%,-50%);z-index:7;padding:14px 22px;min-height:0;background:rgba(8,12,20,.88);border:4px solid var(--ink);box-shadow:6px 6px 0 #000;color:var(--ink);font:700 clamp(18px,2.2vw,26px)/1.2 "Retro",system-ui,sans-serif;white-space:nowrap;animation:nh 1.4s steps(2) infinite}
 #nextHint kbd{font:inherit;font-size:.8em;padding:0 8px;color:var(--gold);border-color:var(--gold)}
-@keyframes nh{50%{border-color:var(--gold)}}
+@keyframes nh{0%,100%{opacity:1;transform:translateX(-50%) scale(1)}50%{opacity:.45;transform:translateX(-50%) scale(.97)}}
 @media(prefers-reduced-motion:reduce){#nextHint{animation:none}}
 /* down & distance flash at the start of each play: one word at a time, each punches in then fades as the next lands */
 #ddFlash{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:6}
@@ -197,9 +198,10 @@ body.held #sit,body.held #badge,body.held #controls,body.held #mute,body.held #b
 @media(prefers-reduced-motion:reduce){#reveal.on .rv{animation:none}}
 #legend{left:14px;bottom:84px;padding:9px 14px;font-size:14px;display:grid;gap:4px;max-width:calc(100vw - 28px)}
 #legend[hidden]{display:none}
+#legend .cmp{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:16px}#legend .cmp em{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:20px}#legend .cmp .vs,#legend .cmp .u{color:var(--mute)}
 /* phones: keep the after-play screen simple (no Space prompt, no stat lines, just the pro's replay) and drop the throw-type and clock pickers (touch pass, 3 s clock) */
 @media(pointer:coarse){#nextHint{display:none!important}
-  #legend>div:not(.rb),#legend .why,#legend #rpMine,#legend #rpAgain{display:none}#legend .rb{margin-top:0}
+  #legend>div:not(.rb):not(.cmp),#legend .why,#legend #rpMine,#legend #rpAgain{display:none}#legend .rb{margin-top:0}
   #controls .seg[aria-label="Throw type"],#controls .lbl,#controls #diff{display:none}}
 #legend .rb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#legend .rb button{min-height:38px;padding:0 12px;font-size:14px}#legend b{font-weight:700}#legend .gap{width:14px}
 #legend .sw{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px}
@@ -345,12 +347,12 @@ body.cinema #cd,body.resultsOn #cd,body.reviewing #cd{display:none!important}
 @media(max-width:820px){#note{display:none}#res .cov{display:none}#sit .big{font-size:24px}#badge b{font-size:22px}#badge{min-width:120px}}
 @media(max-width:600px){#sit #pname{display:none}#sit{padding:8px 10px}#badge{padding:6px 10px 8px}#mute{top:70px}#banner{top:96px;font-size:14px}#help{top:136px;font-size:13px;white-space:normal;text-align:center;width:max-content;max-width:90vw}#res{bottom:auto;top:96px;max-height:30vh}#controls{bottom:10px}#clockNum{bottom:auto;top:120px;right:14px;font-size:32px}}
 @media(max-height:500px){#prog{bottom:50px;padding:4px}#prog button{min-height:34px;padding:0 8px;font-size:13px}#prog .pl{display:none}#note,#help,#sit #pname{display:none}#sit{padding:6px 10px}#sit .big{font-size:20px}#sit small{font-size:12px}#score{font-size:15px}#badge{padding:5px 10px 7px;min-width:110px}#badge b{font-size:20px}#mute{top:62px;min-height:36px}#controls{padding:5px;gap:5px;bottom:6px}#controls button{min-height:36px;font-size:13px;padding:0 9px}.lbl{display:none}#res{bottom:auto;top:auto;bottom:56px;max-height:48vh;font-size:12px;width:min(300px,45vw)}#res .cov,#res .mute+.big+.vs+p+p{display:none}#banner{top:8px;font-size:13px;padding:5px 12px}#clockNum{bottom:auto;top:62px;font-size:28px}}
-@media(prefers-reduced-motion:reduce){#cut.on{animation:none}#cap.on b,#cap.on span{animation:none}#flash.on{animation:flr 2.3s steps(1) forwards}@keyframes flr{0%{opacity:1}100%{opacity:0}}#mask{transition:none}}
+@media(prefers-reduced-motion:reduce){#cut.on{animation:none}#cap.on b,#cap.on span{animation:none}#flash.on{animation:flr 4.2s steps(1) forwards}@keyframes flr{0%{opacity:1}100%{opacity:0}}#mask{transition:none}}
 /* ======================= 8-BIT LOOK ======================= */
 *,*::before,*::after{border-radius:0!important}
 :root{--px:4px;--pxc:var(--ink);--pxs:rgba(0,0,0,.6)}
 /* stepped "pixel" frame: four offset shadows draw a border with notched corners, plus a hard drop shadow */
-.glass,.vsBox,.tutBox,.pzBox,#reveal .rv,#nextHint,.cta,#results .ana>*{border:0!important;backdrop-filter:none!important;
+.glass,.vsBox,.tutBox,.pzBox,#reveal .rv,.cta,#results .ana>*{border:0!important;backdrop-filter:none!important;
   box-shadow:0 calc(-1*var(--px)) 0 0 var(--pxc),0 var(--px) 0 0 var(--pxc),calc(-1*var(--px)) 0 0 0 var(--pxc),var(--px) 0 0 0 var(--pxc),calc(2*var(--px)) calc(2*var(--px)) 0 var(--px) var(--pxs)!important}
 .glass{--px:3px;--pxc:rgba(238,243,238,.55);background:rgba(8,12,22,.9)}
 .vsBox,.tutBox,.pzBox{background:#101830}
@@ -385,6 +387,10 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
 #reveal .rv::after,.tutBox::after,.fqBox::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 14%),linear-gradient(0deg,rgba(255,255,255,.1),rgba(255,255,255,0) 10%)}
 .tutBox,.fqBox,.tutBox h2{text-shadow:0 2px 0 rgba(0,0,0,.55)}
+/* next-play prompt: just pulsing text above the bottom bar, no box */
+#nextHint{top:auto!important;bottom:96px;left:max(calc(50% + 230px),720px);transform:translateX(-50%);background:none!important;border:0!important;box-shadow:none!important;padding:6px 10px;
+  color:#fff;font:400 clamp(15px,1.7vw,20px)/1.2 "Retro",system-ui,sans-serif;text-shadow:3px 3px 0 #000,0 0 14px rgba(0,0,0,.7);animation:nh 1.6s ease-in-out infinite}
+#nextHint kbd{border:0;background:none;padding:0;color:var(--gold)}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js"}}</script>
 </head>
@@ -1168,6 +1174,10 @@ function ribbon(color){const m=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new T
 function ringM(color,r1,r2){const m=new THREE.Mesh(new THREE.RingGeometry(r1,r2,40),new THREE.MeshBasicMaterial({color,toneMapped:false,transparent:true,depthTest:false}));m.rotation.x=-Math.PI/2;m.renderOrder=6;m.visible=false;scene.add(m);return m;}
 function tagS(text,bg,fg){const t=tex(256,96,g=>{g.fillStyle=bg;g.beginPath();g.roundRect(8,10,240,76,38);g.fill();g.fillStyle=fg;g.font='700 54px "Retro",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(text,128,50);});
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));sp.scale.set(4.4,1.65,1);sp.renderOrder=7;sp.visible=false;scene.add(sp);return sp;}
+function retag(sp,text,bg,fg){const F='700 54px "Retro",system-ui,sans-serif',m=document.createElement('canvas').getContext('2d');m.font=F;
+  const w=Math.max(256,Math.ceil((m.measureText(text).width+70)/32)*32);if(sp.material.map)sp.material.map.dispose();
+  sp.material.map=tex(w,96,g=>{g.fillStyle=bg;g.beginPath();g.roundRect(8,10,w-16,76,38);g.fill();g.fillStyle=fg;g.font=F;g.textAlign='center';g.textBaseline='middle';g.fillText(text,w/2,50);});
+  sp.material.needsUpdate=true;sp.scale.set(4.4*w/256,1.65,1);}
 const RV={you:{arc:dotArc(0xffd23f,34,.16),line:ribbon(0xffd23f),spot:ringM(0xffd23f,.7,1.05),rec:ringM(0xffd23f,1.35,1.6),tag:tagS('YOU','#ffd23f','#14201a')},
           pro:{arc:dotArc(0x7cc4ff,34,.16),line:ribbon(0x7cc4ff),spot:ringM(0x7cc4ff,.7,1.05),rec:ringM(0x7cc4ff,1.35,1.6),tag:tagS('PRO','#7cc4ff','#0b1420')},
           best:{arc:dotArc(0x4ade80,34,.16),line:ribbon(0x4ade80),spot:ringM(0x4ade80,.7,1.05),rec:ringM(0x4ade80,1.35,1.6),tag:tagS('BEST','#4ade80','#0b1420')}};
@@ -1192,7 +1202,7 @@ function whyBest(best,P){const lab=best.r?(best.r.label||best.r.id):'',sep=g=>g>
   else why=`It was worth ${fmt(best.epa-m.epa)} more EPA than yours.`;
   return{short,found:false,why};}
 function enterReview(pl,P,pro){const qb=pos(pl,qbOf(pl),pl.T),pts=[qb,pl.pro.spot];
-  const proR=pl.byId[pl.pro.target];placeThrow(RV.pro,qb,pl.pro.spot,proR?pos(pl,proR,pl.T):null,pro.fl,pl.pro.type);
+  const proR=pl.byId[pl.pro.target],qbLast=pl.real?lastName(pl.qb.name):'Pro';retag(RV.pro.tag,qbLast.toUpperCase(),'#7cc4ff','#0b1420');placeThrow(RV.pro,qb,pl.pro.spot,proR?pos(pl,proR,pl.T):null,pro.fl,pl.pro.type);
   const mineThrow=!(P.sack||P.away);
   if(mineThrow){placeThrow(RV.you,P.ev.qb||qb,P.spot,pos(pl,P.ev.r,P.ev.T!=null?P.ev.T:pl.T),P.ev.fl,P.type);pts.push(P.spot);}else for(const m of Object.values(RV.you))m.visible=false;
   const B=S.heat&&S.heat.best,W=B?whyBest(B,P):null;
@@ -1201,12 +1211,12 @@ function enterReview(pl,P,pro){const qb=pos(pl,qbOf(pl),pl.T),pts=[qb,pl.pro.spo
   const cx=(x0+x1)/2,cy0=(y0+y1)/2,span=Math.max(22,x1-x0+12,(y1-y0+14)*(cam.aspect>1?1.25:.7));
   const cy=cy0-span*.14;S.revCam={look:V(cx,cy,0),pos:V(cx,cy-span*.16,span*1.02)};S.reviewOn=true;document.body.classList.add('reviewing');
   const lab=r=>r?(r.label||r.id):'';const sw=c=>`<i class="sw" style="background:${c}"></i>`;
-  $('legend').innerHTML=`<div>${sw('#ffd23f')} <b>You</b> ${mineThrow?`${lab(P.ev.r)}, ${P.type==='fast'?'fastball':'touch'}${earlyBy(P)?' · '+earlyBy(P).toFixed(1)+' s early':''} · ${P.ev.pC*100|0}% catch · ${fmt(P.ev.epa)} EPA`:(P.sack?'sacked, no throw':'threw it away')}
-</div><div>${sw('#7cc4ff')} <b>${pl.real?pl.qb.name:'Pro'}</b> ${lab(proR)}, ${pl.pro.type==='fast'?'fastball':'touch'} · ${pro.pC*100|0}% catch · ${fmt(pro.epa)} EPA</div>`+
+  const mineE=P.ev?P.ev.epa:0;
+  $('legend').innerHTML=`<div class="cmp"><span>${sw('#7cc4ff')} <b>${esc(qbLast)}</b> <em class="${pro.epa>=0?'pos':'neg'}">${fmt(pro.epa)}</em></span><span class="vs">vs</span><span>${sw('#ffd23f')} <b>You</b> <em class="${mineE>=0?'pos':'neg'}">${fmt(mineE)}</em></span><span class="u">EPA</span></div>`+
     (W?`<div>${sw('#4ade80')} <b>Best read</b> ${W.found?'— yours':W.short}</div><p class="why">${W.why}</p>`:'');
   $('legend').insertAdjacentHTML('beforeend',`<div class="rb"><button id="rpMine" ${mineThrow?'':'disabled'}>▶ Your throw${kp('repMine')}</button><button id="rpPro">▶ ${pl.real?pl.qb.name.split(' ').pop()+'\'s':'Pro\'s'} throw${kp('repPro')}</button>${S.round&&S.round.kind==='daily'?'':'<button id="rpAgain">↺ Run it back</button>'}</div>`);
   $('rpMine').onclick=()=>replay('mine');$('rpPro').onclick=()=>replay('pro');if($('rpAgain'))$('rpAgain').onclick=()=>{S.advanceAt=0;loadPlay(S.pi);};
-  $('legend').hidden=false;if(pl.real)$('reveal').classList.add('side');}
+  $('legend').hidden=false;}
 // after a play nothing moves on by itself: a prompt in the middle of the screen waits for Space (or a tap on it)
 function showNext(){if(isTut()||S.phase!=='done'||!S.round)return;const last=S.round.i>=S.round.plays.length-1;
   $('nextHint').innerHTML=(coarse?'Tap here':'Press <kbd>'+kn('snap')+'</kbd>')+(last?' to see your results':' for the next play');$('nextHint').hidden=false;}
@@ -1218,7 +1228,7 @@ function replay(which){const pl=play();if(S.phase!=='done')return;const M=S.mine
   if(which==='mine'){P.sub=M.sub;P.defl=M.defl;}P.replay=which;S.yaw=0;startThrow(P,false);
   banner(which==='pro'?'Replay: '+(pl.real?pl.qb.name:'the pro')+'\'s throw':'Replay: your throw');}
 function afterReplay(){const pl=play();document.body.classList.remove('playing');S.phase='done';banner('');holdHere();
-  enterReview(pl,S.mine,S.lastPro);if(pl.real&&S.lastMine!==undefined)showReveal(pl,S.lastMine,S.lastPro.epa);$('res').hidden=false;showNext();}
+  enterReview(pl,S.mine,S.lastPro);$('res').hidden=false;showNext();}
 
 /* ======================= DAILY 6 + LEADERBOARD ======================= */
 const ROUND_N=6;
@@ -1527,9 +1537,9 @@ function finishReal(){
   f.querySelector('span').textContent=Math.abs(diff)<.005?'You matched the pro':(diff>0?'You beat the pro by ':Math.abs(diff)<.1?'The pro edged you by ':'The pro beat you by ')+Math.abs(diff).toFixed(2)+' EPA';
   const oc=outcomeNote(P,pl);f.querySelector('i').textContent=oc;f.querySelector('i').hidden=!oc;
   f.querySelector('em').textContent=describe(P)+(earlyBy(P)?' · released '+earlyBy(P).toFixed(1)+' s before the pro':'')+(last?' · Round total '+fmt(tot)+' EPA vs the pros':'');
-  if(isTut())setTimeout(()=>{if(isTut()&&S.phase==='done'&&play()===pl)tutCard('done');},2600);
+  if(isTut())setTimeout(()=>{if(isTut()&&S.phase==='done'&&play()===pl)tutCard('done');},4400);
   holdHere();
-  S.revealTO=setTimeout(()=>{document.body.classList.remove('held');if(S.phase!=='done'||play()!==pl)return;enterReview(pl,P,pro);if(pl.real)showReveal(pl,mine,pro.epa);showNext();},2300);
+  S.revealTO=setTimeout(()=>{document.body.classList.remove('held');if(S.phase!=='done'||play()!==pl)return;enterReview(pl,P,pro);showNext();},4200);
   const lvl=S.limit?S.limit/1000+' s clock':'no clock',target=P.sack?'No throw':P.away?'Out of bounds':(P.ev.r.label||P.ev.r.id)+', '+(P.type==='fast'?'fastball':'touch');
   const bst=S.heat.best;
   $('res').innerHTML=`<details><summary><span class="mute">Last play</span><b class="${diff>=0?'pos':'neg'}">${diff>=0?'Won':'Lost'} ${fmt(diff)}</b><span>You ${fmt(mine)} · Pro ${fmt(pro.epa)}</span></summary>
