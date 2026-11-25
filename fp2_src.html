@@ -375,10 +375,14 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
 /* liquid glass for the tutorial card and the first-visit question: see-through, blurred, with a light rim, inside the pixel frame */
 #tut{background:rgba(4,8,16,.18)}
 #firstQ{background:rgba(4,8,16,.35)}
+#reveal .rv{--pxs:rgba(0,0,0,.35)}
+#reveal .rvCmp{display:grid;grid-template-columns:auto auto;gap:2px 14px;margin-top:8px;align-items:baseline}#reveal .rvCmp span{color:var(--ink);opacity:.85}#reveal .rvCmp b{font-family:"Retro",system-ui,sans-serif;font-size:18px}#reveal .rvTgt{color:var(--gold)}
 .tutBox,.fqBox{--pxc:rgba(255,255,255,.55);--pxs:rgba(0,0,0,.35);
   background:linear-gradient(155deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.07) 38%,rgba(120,170,255,.06) 100%)!important;
   backdrop-filter:blur(16px) saturate(170%) brightness(.82)!important;-webkit-backdrop-filter:blur(16px) saturate(170%) brightness(.82)!important;position:relative}
-.tutBox::after,.fqBox::after{content:"";position:absolute;inset:0;pointer-events:none;
+#reveal .rv{background:linear-gradient(155deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.07) 38%,rgba(120,170,255,.06) 100%)!important;
+  backdrop-filter:blur(16px) saturate(170%) brightness(.82)!important;-webkit-backdrop-filter:blur(16px) saturate(170%) brightness(.82)!important;position:relative;text-shadow:0 2px 0 rgba(0,0,0,.55)}
+#reveal .rv::after,.tutBox::after,.fqBox::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 14%),linear-gradient(0deg,rgba(255,255,255,.1),rgba(255,255,255,0) 10%)}
 .tutBox,.fqBox,.tutBox h2{text-shadow:0 2px 0 rgba(0,0,0,.55)}
 </style>
@@ -449,7 +453,7 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
     <ol id="rsList" hidden></ol>
     <div class="anTip" id="anTip" hidden></div>
   </div></div>
-  <div class="hud" id="reveal" hidden><div class="rv"><div class="rvBadge"><b></b></div><div class="rvBody"><small>The real play</small><h2></h2><p class="rvTeam"></p><p class="rvGame"></p><p class="rvDesc"></p><p class="rvCmp"></p></div></div></div>
+  <div class="hud" id="reveal" hidden><div class="rv"><div class="rvBadge"><b></b></div><div class="rvBody"><small>The real play</small><h2></h2><p class="rvTeam"></p><p class="rvTgt"></p><div class="rvCmp"></div></div></div></div>
   <div class="hud glass" id="legend" hidden></div>
   <div id="ddFlash" aria-hidden="true"></div>
   <div class="hud" id="flash"><b></b><span></span><i hidden></i><em></em></div>
@@ -465,7 +469,7 @@ kbd{border:2px solid currentColor;border-bottom-width:4px}
         </section>
         <nav class="hmModes" aria-label="Game modes">
           <button class="cta" id="go"><span class="ctaMain">Play today’s 6 snaps</span><span class="ctaMeta"><span id="today"></span> · <span id="hmDaily">Not played yet</span></span></button>
-          <p class="hmAlt"><button id="goPractice">Practice</button><button id="goVs">Versus a real QB</button><button id="tutBtn">How to play</button></p>
+          <p class="hmAlt"><button id="goPractice">Practice</button><button id="goVs">Versus a real QB</button><button id="tutBtn">Tutorial</button></p>
           <div class="hmSet"><button id="soundPick" aria-pressed="true">Sound: on</button><button id="annPick" aria-pressed="true">Announcer: on</button><button id="keysPick">Controls</button></div>
         </nav>
       </div>
@@ -1141,10 +1145,9 @@ const initials=n=>String(n||'').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3
 function showReveal(pl,mine,proE){const m=pl.meta,c=TEAMC[m.offT]||['#a3161f','#f5c518'];const el=$('reveal');
   el.style.setProperty('--team',c[0]);el.style.setProperty('--team2',c[1]);
   el.querySelector('.rvBadge b').textContent=m.qb.num!=null?m.qb.num:initials(m.qb.name);el.querySelector('h2').textContent=m.qb.name;
-  el.querySelector('.rvTeam').textContent='QB · '+(m.qb.num!=null?'#'+m.qb.num+' · ':'')+m.offName;
-  el.querySelector('.rvGame').textContent=m.away+' at '+m.home+' · '+m.round+' · '+m.date+' · '+pl.clock.split(' · ').slice(0,2).join(' ');
-  el.querySelector('.rvDesc').textContent=m.pro.text;
-  el.querySelector('.rvCmp').innerHTML=`His decision <b class="${proE>=0?'pos':'neg'}">${fmt(proE)}</b> EPA · yours <b class="${mine>=0?'pos':'neg'}">${fmt(mine)}</b> EPA`;
+  el.querySelector('.rvTeam').textContent=m.offName;
+  const tg=pl.byId[pl.pro.target];el.querySelector('.rvTgt').textContent=tg&&tg.name&&!/lineman/i.test(tg.name)?'Target: '+tg.name:'';
+  el.querySelector('.rvCmp').innerHTML=`<span>His decision</span><b class="${proE>=0?'pos':'neg'}">${fmt(proE)} EPA</b><span>Your decision</span><b class="${mine>=0?'pos':'neg'}">${fmt(mine)} EPA</b>`;
   el.hidden=false;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
 
 /* ======================= MOTION ARROWS AT THE FREEZE (screen overlay) ======================= */
@@ -1506,7 +1509,7 @@ function finish(){const P=S.plan;
 function endCine(){const P=S.plan;if(!P||S.phase!=='cine')return;P.cineDone=true;document.body.classList.remove('cinema');$('letter').classList.remove('on');$('cap').classList.remove('on');S.phase='done';finishReal();}
 function skipCine(){if(S.phase==='throw'){let n=0;while(S.phase==='throw'&&n++<3000)step(1/60);}if(S.phase==='cine')endCine();}
 function finishReal(){
-  document.body.classList.remove('playing');
+  document.body.classList.remove('playing');S.doneAt=performance.now();
   if(S.plan&&S.plan.replay){afterReplay();return;}
   const pl=play(),P=S.plan;$('snap').disabled=false;$('snap').textContent='Skip'+kp('snap');banner('');$('help').textContent='';
   const pro=evaluate(pl,pl.pro.spot,pl.pro.type);
@@ -1695,11 +1698,13 @@ cv.addEventListener('pointerup',e=>{if(!isTouch(e))return;const d=down;down=null
     if(S.phase==='run')startThrow(makePlan(a.f,S.type,null,S.t),true);else if(S.phase==='decide')startThrow(makePlan(a.f,S.type,null),true);return;}
   if(d.mode==='look')return;
   if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}
+  if(S.phase==='done'&&performance.now()-(S.doneAt||0)>500){snap();return;}   // tap anywhere on the field = next play (phones have no Space)
   if(S.phase==='run')S.nudge=performance.now();});
 cv.addEventListener('pointerup',e=>{if(isTouch(e))return;const d=down;down=null;if(!d||Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>10)return;
   if(S.phase==='run'){if(!canEarly()){S.nudge=performance.now();return;}
     const a=aimPick(e.clientX,e.clientY);if(!a)return;S.pend=null;S.aim=null;startThrow(makePlan(a.f,S.type,null,S.t),true);return;}
-  if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}if(S.phase!=='decide')return;
+  if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}
+  if(S.phase==='done'&&performance.now()-(S.doneAt||0)>500){snap();return;}if(S.phase!=='decide')return;
   const a=aimPick(e.clientX,e.clientY);if(!a)return;const f=a.f;
   S.pend=null;S.aim=null;startThrow(makePlan(f,S.type,null),true);});
 document.addEventListener('keydown',e=>{const k=normKey(e);keys[k]=true;if(S.phase==='idle')return;const a=actOf(k);if(!a)return;
@@ -1988,7 +1993,7 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;
       if(P.cine&&P.ev&&S.t>tbOf(P)-.45&&S.t<tbOf(P)+.5)scale=.22;sdt=dt*scale;let r=sdt;
       while(r>1e-4&&S.phase==='throw'){const h=Math.min(r,1/120);step(h);r-=h;}}}
   update(dt,sdt,now);renderer.render(scene,cam);requestAnimationFrame(loop);}
-setType('touch');buildField(PLAYS[0]);buildActors(PLAYS[0]);requestAnimationFrame(loop);
+setType('touch');if(coarse){S.limit=5000;syncDiff();}buildField(PLAYS[0]);buildActors(PLAYS[0]);requestAnimationFrame(loop);
 window.__chest=id=>{const pl=play(),o=pl.byId[id],q=pos(pl,o,S.phase==='run'?S.t:pl.T),v=V(q.x,q.y,1.3).project(cam),r=cv.getBoundingClientRect();return v.z>1?null:[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height];};window.__dbg=(id,x,y)=>{const pl=play(),o=pl.byId[id];return{rec:pos(pl,o,pl.T),aim:groundAt(x,y),cam:[cam.position.x+MID,-cam.position.z,cam.position.y]};};window.__pathPt=(i,k)=>{const L=PATH.list[i];if(!L)return null;const p=L.pts[Math.min(k,L.pts.length-1)],v=V(p.x,p.y,1).project(cam),r=cv.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height,L.r.id,p.t];};window.__ghost=()=>[ghost.visible,ghost.position.x,ghost.position.z];window.__setArt=setArt;window.__rx=()=>actors.filter(a=>a.off&&a.p&&!a.p.big).map(a=>[a.id,+a.v.toFixed(1),a.g.userData.rig.st.up,+a.g.position.y.toFixed(2)]);window.__atlas=(st,side,num)=>{const o=ART.cur;ART.cur=st;const t=drawCutout(KIT[side],num,SKINC[(num*7)%SKINC.length]);ART.cur=o;return t.image.toDataURL();};window.__S=S;window.__ANN=ANN;window.__begin=begin;window.__PLAYS=PLAYS;window.__showResults=()=>showResults();
 window.__force=(x,y,type,kind,sub,yac)=>{const P=makePlan({x,y},type,{kind,yac:yac||0});if(sub)P.sub=sub;startThrow(P,true);};window.__load=i=>loadPlay(i);window.__confetti=confetti;window.__ring=()=>{if(!hintRing.visible)return null;const v=hintRing.position.clone().project(cam);return[+v.x.toFixed(2),+v.y.toFixed(2),v.z<1];};window.__verdict=snapVerdict;
 }
