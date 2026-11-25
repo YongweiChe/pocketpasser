@@ -1101,9 +1101,8 @@ function kitsFor(pl){if(!pl.real)return KIT;const o=TEAMC[pl.meta.offT],d=TEAMC[
          def:{jersey:'#f4f4f2',ink:d[0],trim:d[1],pants:hx(d[0]),helmet:hx(d[2]),stripe:hx(d[1]),mask:0x9aa3b0,sock:0xffffff}};}
 const SUFX=/^(jr|sr|ii|iii|iv|v)\.?$/i;
 function lastName(n){const w=String(n||'').trim().split(/\s+/);while(w.length>1&&SUFX.test(w[w.length-1]))w.pop();return w.length>1?w.slice(1).join(' '):w[0]||'';}
-function nameTags(ps){const ok=p=>p.elig&&p.name&&!p.gen&&!/lineman/i.test(p.name),cnt={};   // receivers by last name; two with the same one get a first initial
-  ps.filter(ok).forEach(p=>{const l=lastName(p.name);cnt[l]=(cnt[l]||0)+1;});
-  return p=>{if(!ok(p))return null;const l=lastName(p.name);return cnt[l]>1?p.name.trim()[0]+'. '+l:l;};}
+function nameTags(ps){const ok=p=>p.elig&&p.name&&!p.gen&&!/lineman/i.test(p.name);   // receivers as first initial + last name (J. Jefferson)
+  return p=>{if(!ok(p))return null;const l=lastName(p.name),f=p.name.trim();return f.includes(' ')?f[0]+'. '+l:l;};}
 function realToPlay(r){
   const tr=f=>({type:'track',f}),pathOf=(f,T)=>{const p=[];for(let i=0;i<f.length;i+=3)if(f[i]<=T+.6)p.push([f[i+1],f[i+2]]);return p.length>1?p:[[f[1],f[2]],[f[1],f[2]+.01]];};
   const tag=nameTags(r.off);
