@@ -524,7 +524,7 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
         </nav>
       </div>
       <div class="vsSheet" id="firstQ" hidden role="dialog" aria-modal="true" aria-labelledby="fqH"><div class="vsBox fqBox">
-        <small>First time here?</small><h2 id="fqH">Want a quick tutorial?</h2><p class="mute">One real play, about a minute. It shows you how a snap works before today’s 6 counts.</p>
+        <small>First time here?</small><h2 id="fqH">Want a quick tutorial?</h2><p class="mute">Three real plays, about two minutes. It shows you how a snap works before your first real round.</p>
         <div class="fqBtns"><button class="go" id="fqYes">Yes, show me</button><button class="ghost" id="fqNo">No, just play</button></div>
       </div></div>
       <div class="vsSheet" id="vsPick" hidden role="dialog" aria-modal="true" aria-labelledby="vsH"><div class="vsBox">
@@ -1998,9 +1998,9 @@ window.addEventListener('keydown',e=>{
   if(PZ)e.stopImmediatePropagation();},true);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.phase!=='idle'&&!PZ&&(S.phase==='run'||S.phase==='decide'))openPause();});
 $('tutBtn').onclick=()=>{store.set('visited','1');begin('tutorial');};
-$('goBled').onclick=()=>{store.set('visited','1');bledIntro();};
-$('goPractice').onclick=()=>begin('practice');
-$('goVs').onclick=()=>openVs();$('vsClose').onclick=()=>closeVs();$('vsQ').oninput=()=>renderVs($('vsQ').value);
+$('goBled').onclick=()=>firstThen(bledIntro);
+$('goPractice').onclick=()=>firstThen(()=>begin('practice'));
+$('goVs').onclick=()=>firstThen(openVs);$('vsClose').onclick=()=>closeVs();$('vsQ').oninput=()=>renderVs($('vsQ').value);
 $('vsPick').addEventListener('click',e=>{if(e.target===$('vsPick'))closeVs();});
 $('rsHome').onclick=()=>goHome();
 $('again').onclick=()=>startRound('practice');
@@ -2011,9 +2011,12 @@ if(document.fonts)Promise.all([document.fonts.load('600 12px "Retro"'),document.
 setTimeout(()=>{if(H.sound&&(!AU.ctx||AU.ctx.state!=='running')){$('tune').hidden=false;
   const go=()=>{AU.ensure();if($('tune'))$('tune').hidden=true;['pointerdown','keydown','touchstart'].forEach(ev=>document.removeEventListener(ev,go,true));};
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,go,true));}},400);
-$('go').onclick=()=>{if(store.get('visited')){begin('daily');return;}$('firstQ').hidden=false;setTimeout(()=>$('fqYes').focus({preventScroll:true}),30);};
-$('fqYes').onclick=()=>{store.set('visited','1');$('firstQ').hidden=true;begin('tutorial');};
-$('fqNo').onclick=()=>{store.set('visited','1');$('firstQ').hidden=true;begin('daily');};
+// first visit: any way into the game (Today's 6, practice, versus, Bledsoe mode) first offers the tutorial; "No" carries on to what was clicked
+let afterFirstQ=null;
+function firstThen(fn){if(store.get('visited')){fn();return;}afterFirstQ=fn;$('firstQ').hidden=false;setTimeout(()=>$('fqYes').focus({preventScroll:true}),30);}
+$('go').onclick=()=>firstThen(()=>begin('daily'));
+$('fqYes').onclick=()=>{afterFirstQ=null;store.set('visited','1');$('firstQ').hidden=true;begin('tutorial');};
+$('fqNo').onclick=()=>{store.set('visited','1');$('firstQ').hidden=true;const f=afterFirstQ||(()=>begin('daily'));afterFirstQ=null;f();};
 document.body.classList.add('home');showHome();
 
 /* ======================= PER-FRAME ======================= */
