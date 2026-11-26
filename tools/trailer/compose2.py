@@ -4,8 +4,10 @@ CATCH = frame in s8_catch where the ball is caught (normal speed until then, fas
 import os, shutil, subprocess, sys
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-HERE = os.path.dirname(os.path.abspath(__file__)); FR, OUT = os.path.join(HERE, 'frames2'), os.path.join(HERE, 'out2')
-W, H, FPS = 1920, 1080, 30
+HERE = os.path.dirname(os.path.abspath(__file__)); PORTRAIT = '--portrait' in sys.argv; sys.argv = [a for a in sys.argv if a != '--portrait']
+FR, OUT = os.path.join(HERE, 'frames2v' if PORTRAIT else 'frames2'), os.path.join(HERE, 'out2v' if PORTRAIT else 'out2')
+W, H, FPS = (1080, 1920, 30) if PORTRAIT else (1920, 1080, 30)
+TS = .62 if PORTRAIT else 1.0   # title scale: the vertical frame is narrower
 PIX = os.path.join(HERE, 'font', 'PressStart2P.ttf')
 GOLD, WHITE, GREEN, MUTE = (245, 197, 24), (255, 255, 255), (74, 222, 128), (169, 184, 175)
 MUSIC = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'audio', 'music', 'home.mp3')
@@ -17,7 +19,7 @@ def emit(im):
     im.convert('RGB').save(os.path.join(OUT, '%05d.png' % n)); n += 1
 
 def text_img(lines, gap=30):
-    fonts = [ImageFont.truetype(PIX, s) for _, s, _ in lines]; bb = [f.getbbox(t) for (t, _, _), f in zip(lines, fonts)]
+    fonts = [ImageFont.truetype(PIX, max(12, int(s * TS))) for _, s, _ in lines]; bb = [f.getbbox(t) for (t, _, _), f in zip(lines, fonts)]
     w = max(b[2] - b[0] for b in bb) + 40; h = sum(b[3] - b[1] for b in bb) + gap * (len(lines) - 1) + 40
     im = Image.new('RGBA', (w, h), (0, 0, 0, 0)); d = ImageDraw.Draw(im); y = 12
     for (t, s, c), f, b in zip(lines, fonts, bb):
@@ -50,9 +52,10 @@ def play(paths, title=None, where='low', t_in=0, t_out=None, fade=10):
                 band = Image.new('RGBA', (ts.width + 40, ts.height + 30), (0, 0, 0, int(160 * a))); im.paste(band, (x - 20, y - 15), band)
                 ti = with_alpha(ts, a); im.paste(ti, (x, y), ti)
             else:                # lower third on a band
-                ts = t.resize((int(t.width * .62), int(t.height * .62)), Image.NEAREST)
-                band = Image.new('RGBA', (W, ts.height + 44), (0, 0, 0, int(150 * a))); im.paste(band, (0, H - ts.height - 120), band)
-                ti = with_alpha(ts, a); im.paste(ti, ((W - ts.width) // 2, H - ts.height - 98), ti)
+                k = .9 if PORTRAIT else .62; lift = 420 if PORTRAIT else 120
+                ts = t.resize((int(t.width * k), int(t.height * k)), Image.NEAREST)
+                band = Image.new('RGBA', (W, ts.height + 44), (0, 0, 0, int(150 * a))); im.paste(band, (0, H - ts.height - lift), band)
+                ti = with_alpha(ts, a); im.paste(ti, ((W - ts.width) // 2, H - ts.height - lift + 22), ti)
         emit(im)
 
 def main():
@@ -69,7 +72,7 @@ def main():
     play(catch[:CATCH] + catch[CATCH::3])
     play(frames_of('s9_banner'))                                                     # 9: the win banner, straight on from the catch
     rev = frames_of('s10_review')                                                    # 10: the replay view
-    play(rev[:90], [("BEAT THE PRO'S", 64, WHITE), ("REAL DECISION.", 64, GREEN)], 'right', 8, 90)
+    play(rev[:90], [("BEAT THE PRO'S", 64, WHITE), ("REAL DECISION.", 64, GREEN)], 'low' if PORTRAIT else 'right', 8, 90)
     # 11: fade from the replay view to the field with the end card
     last = load(rev[89]); field = load(frames_of('s3_routes')[60]).filter(ImageFilter.GaussianBlur(6))
     end = text_img([("POCKET PASSER", 104, GOLD), ("THINK YOU'RE SMART ENOUGH?", 40, WHITE), ("POCKETPASSER.ONRENDER.COM", 30, MUTE)], gap=36)

@@ -4,27 +4,33 @@ to the same virtual time. Usage: python3 tools/trailer/capture2.py   (needs the 
 import os, shutil
 from playwright.sync_api import sync_playwright
 
-HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, 'frames2')
+HERE = os.path.dirname(os.path.abspath(__file__)); OUT = os.path.join(HERE, 'frames2v' if '--portrait' in __import__('sys').argv else 'frames2')
 FPS = 30; DT = 1000 / FPS
-import sys; PUSH_ONLY = '--push-only' in sys.argv
+import sys; PUSH_ONLY = '--push-only' in sys.argv; PORTRAIT = '--portrait' in sys.argv
 KEY = '2019_BAL_2019090803_683'          # Lamar Jackson to Marquise Brown, 83 yd TD (public highlight)
 BEST = [22.5, 38, 'fast']                # the model's best read on this play
 SYNC = "(()=>{const now=performance.now();for(const a of document.getAnimations()){if(a.__t0==null){a.__t0=now;a.pause();}a.currentTime=now-a.__t0;}})()"
 CLEAN = """#controls,#help,#banner,#badge,#sit,.escHint,#mute,#prog,#nextHint,#res,#skipHint{display:none!important}
 body.trailer-quiet #cd{display:none!important}"""
 # push-in: from high above and behind the stadium down onto the normal route view (eased), then hand back to the game camera
-PUSH = """(()=>{let end=null,t0=null;const D=window.__pushMs;window.__camOv=(cam,now)=>{
-  if(!end){end={p:cam.position.clone(),q:cam.quaternion.clone()};const f=new cam.position.constructor(0,0,-1).applyQuaternion(end.q);
-    end.look=end.p.clone().add(f.multiplyScalar(40));end.s=end.p.clone().add(new cam.position.constructor(0,46,38));t0=now;}
-  const u=Math.min(1,(now-t0)/D),k=u*u*(3-2*u);/* slow in, slow out */if(u>=1){window.__camOv=null;return;}
-  cam.position.lerpVectors(end.s,end.p,k);cam.lookAt(end.look.clone().lerp(end.look,k));if(k>.97)cam.quaternion.slerp(end.q,(k-.97)/.03);};})()"""
+PUSH = """(()=>{let end=null,t0=null,snapAt=null;const D=window.__pushMs,OFF=window.__camOff||[0,0,0];window.__camOv=(cam,now)=>{
+  const V3=cam.position.constructor,off=new V3(OFF[0],OFF[1],OFF[2]);
+  if(!end){end={p:cam.position.clone().add(off),q:cam.quaternion.clone()};const f=new V3(0,0,-1).applyQuaternion(end.q);
+    end.look=end.p.clone().add(f.multiplyScalar(40));end.s=end.p.clone().add(new V3(0,46,38));t0=now;}
+  const u=Math.min(1,(now-t0)/D),k=u*u*(3-2*u);/* slow in, slow out */
+  if(u<1){cam.position.lerpVectors(end.s,end.p,k);cam.lookAt(end.look);if(k>.97)cam.quaternion.slerp(end.q,(k-.97)/.03);return;}
+  /* after the push: keep the (portrait) offset on the game camera, easing it out over 0.7 s once the ball is snapped */
+  if(window.__S.phase!=='pre'&&snapAt==null)snapAt=now;const g=snapAt==null?1:Math.max(0,1-(now-snapAt)/700);
+  if(g<=0||!OFF.some(Boolean)){window.__camOv=null;return;}cam.position.add(off.multiplyScalar(g*g*(3-2*g)));};})()"""
 
 def main():
     if PUSH_ONLY: shutil.rmtree(os.path.join(OUT, 's12_push'), ignore_errors=True)
     else: shutil.rmtree(OUT, ignore_errors=True)
     with sync_playwright() as p:
         b = p.chromium.launch(args=['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'])
-        pg = b.new_context(viewport={'width': 1280, 'height': 720}, device_scale_factor=1.5).new_page()
+        ctx = (b.new_context(viewport={'width': 720, 'height': 1280}, device_scale_factor=1.5, has_touch=True, is_mobile=True) if PORTRAIT
+               else b.new_context(viewport={'width': 1280, 'height': 720}, device_scale_factor=1.5))
+        pg = ctx.new_page()
         errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.clock.install(); pg.goto('http://localhost:8000/fp2.html', timeout=180000)
         pg.evaluate("localStorage.setItem('qbcam.visited','1');localStorage.setItem('qbcam.sound','0')")
@@ -50,7 +56,7 @@ def main():
         tick(1500)                                   # let the auto down-and-distance flash pass off camera
         # shots 1-2: push-in onto the field and the routes (titles are added in compose)
         pg.evaluate("(()=>{const e=document.getElementById('ddFlash');clearTimeout(e._d);clearTimeout(e._t);e.innerHTML='';})()")   # no stray down-and-distance flash during the push
-        pg.evaluate("window.__pushMs=6000;" + PUSH); tick()   # first frame already on the start pose
+        pg.evaluate("window.__pushMs=6000;window.__camOff=" + ("[0,9,15]" if PORTRAIT else "[0,0,0]") + ";" + PUSH); tick()   # first frame already on the start pose
         shoot('s12_push', 210)
         if PUSH_ONLY: print('errors:', errs[:3]); b.close(); return
         # shot 3: route view, the down-and-distance flash punches in

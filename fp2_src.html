@@ -950,7 +950,8 @@ function buildSidelines(pl,add){
 let fieldMesh=null;const perPlay=[];
 const grassBase=tex(256,256,(g,w,h)=>{g.fillStyle='#808080';g.fillRect(0,0,w,h);for(let i=0;i<9000;i++){const v=110+Math.random()*40|0;g.fillStyle=`rgb(${v},${v},${v})`;g.fillRect(Math.random()*w,Math.random()*h,1,2+Math.random()*2);}});
 function buildField(pl){placeStadium(pl);
-  const y0=-30,y1=82,PX=16,c=document.createElement('canvas');c.width=Math.round(W*PX);c.height=(y1-y0)*PX;const g=c.getContext('2d');
+  const y0=-(100-pl.ytg)-12,y1=pl.ytg+12,PX=16,   // always the whole field: both end zones + a 2 yd border (a long field used to cut off the far end zone)
+  c=document.createElement('canvas');c.width=Math.round(W*PX);c.height=(y1-y0)*PX;const g=c.getContext('2d');
   const Y=y=>(y1-y)*PX,X=x=>x*PX;
   for(let y=y0;y<y1;y++){const a=100-pl.ytg+y;let col;
     if(a>=110||a<-10)col='#1a4f2e';else if(a>=100)col=pl.real&&TEAMC[pl.meta.defT]?TEAMC[pl.meta.defT][0]:'#7a1018';else if(a<0)col=pl.real&&TEAMC[pl.meta.offT]?TEAMC[pl.meta.offT][0]:'#16305e';else col=(Math.floor(a/5)%2)?'#3a9e55':'#45ad61';
