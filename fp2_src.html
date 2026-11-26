@@ -201,6 +201,9 @@ body.held #sit,body.held #badge,body.held #controls,body.held #mute,body.held #b
 #legend .cmp{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:16px}#legend .cmp em{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:20px}#legend .cmp .vs,#legend .cmp .u{color:var(--mute)}
 /* phones: keep the after-play screen simple (no Space prompt, no stat lines, just the pro's replay) and drop the throw-type and clock pickers (touch pass, 3 s clock) */
 @media(pointer:coarse){
+  .escHint,#badge,#banner,#help{display:none!important}
+  #sit small,#sit #score{display:none}#controls #away{display:none}
+  body.playing #sit,body.playing #controls,body.playing #prog,body.playing #mute,body.playing #res,body.playing #cd span,body.playing #cd small{display:none!important}
   #legend>div:not(.rb):not(.cmp),#legend .why,#legend #rpMine,#legend #rpAgain{display:none}#legend .rb{margin-top:0}
   #controls .seg[aria-label="Throw type"],#controls .lbl,#controls #diff{display:none}}
 #legend .rb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#legend .rb button{min-height:38px;padding:0 12px;font-size:14px}#legend b{font-weight:700}#legend .gap{width:14px}
@@ -520,7 +523,8 @@ const play=()=>PLAYS[S.pi];
 const fmt=v=>(v>=0?'+':'')+v.toFixed(2);
 function banner(t){$('banner').textContent=t;}
 function ordinal(n){return['','1st','2nd','3rd','4th'][n];}
-function ddFlash(p){const el=$('ddFlash');if(!el)return;const words=[ordinal(p.down),'&',p.dist>=p.ytg?'Goal':String(p.dist)],gap=.42;
+function ddFlash(p){const el=$('ddFlash');if(!el)return;clearTimeout(el._d);el.innerHTML='';el._d=setTimeout(()=>{if(play()===p&&S.phase==='pre')ddFlashNow(p);},1000);}
+function ddFlashNow(p){const el=$('ddFlash');const words=[ordinal(p.down),'&',p.dist>=p.ytg?'Goal':String(p.dist)],gap=.42;
   el.className='d'+p.down;el.innerHTML=words.map((w,i)=>`<b class="${i===0?'n':i===1?'amp':'last'}" style="animation-delay:${(i*gap).toFixed(2)}s">${w}</b>`).join('');
   clearTimeout(el._t);el._t=setTimeout(()=>{el.innerHTML='';},(words.length-1)*gap*1000+1400);}
 function fieldPos(ytg){const a=100-ytg;return a<50?'own '+a:a===50?'midfield':'opp '+(100-a);}
@@ -1717,7 +1721,7 @@ const cancelZone=y=>y>innerHeight*.86;
 function touchAim(x,y){if(cancelZone(y)){S.aim=null;S.aimSnap=null;banner('Let go here to cancel');S.cancelMsg=true;return null;}
   const f=floorClamp(x,y-TOUCH_UP);S.aim=f;S.aimSnap=null;if(S.cancelMsg)banner('');S.cancelMsg=false;return{f,snap:null};}
 function clearRead(){if(S.read>=0){S.read=-1;$('prog').querySelectorAll('button').forEach(b=>b.classList.remove('on'));}}
-cv.addEventListener('pointerdown',e=>{down={x0:e.clientX,y0:e.clientY,lx:e.clientX,ly:e.clientY,mode:null};if(!isTouch(e))return;
+cv.addEventListener('pointerdown',e=>{down={x0:e.clientX,y0:e.clientY,lx:e.clientX,ly:e.clientY,mode:null,t0:performance.now()};if(!isTouch(e))return;
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   if(S.phase==='decide'){down.mode='aim';touchAim(e.clientX,e.clientY);}
   else if(S.phase==='run'){const d=down;d.holdTO=setTimeout(()=>{if(down!==d||d.mode||S.phase!=='run')return;if(!canEarly()){S.nudge=performance.now();return;}
@@ -1728,6 +1732,9 @@ cv.addEventListener('pointermove',e=>{const d=down;if(!d||!isTouch(e))return;con
     S.yaw=Math.max(-1.45,Math.min(1.45,S.yaw-dx*LOOK_SENS/Math.max(320,innerWidth)));}});
 cv.addEventListener('pointercancel',()=>{if(down)clearTimeout(down.holdTO);down=null;S.aim=null;});
 cv.addEventListener('pointerup',e=>{if(!isTouch(e))return;const d=down;down=null;if(!d)return;clearTimeout(d.holdTO);
+  const tap=Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<12&&performance.now()-d.t0<300&&d.mode!=='look';
+  if(tap&&!cancelZone(e.clientY)&&(S.phase==='decide'||(S.phase==='run'&&canEarly()))){const f=floorClamp(e.clientX,e.clientY);S.aim=null;   // tap = throw right there
+    startThrow(S.phase==='run'?makePlan(f,S.type,null,S.t):makePlan(f,S.type,null),true);return;}
   if(d.mode==='aim'){const a=touchAim(e.clientX,e.clientY);S.aim=null;if(!a){banner('Cancelled');S.cancelMsg=false;return;}
     if(S.phase==='run')startThrow(makePlan(a.f,S.type,null,S.t),true);else if(S.phase==='decide')startThrow(makePlan(a.f,S.type,null),true);return;}
   if(d.mode==='look')return;
@@ -1946,7 +1953,7 @@ function update(dt,sdt,now){
     if(live){const b=ball3D(),look=V(b.p.x,b.p.y,b.h),d=look.clone().sub(eye),ty=Math.atan2(-d.x,-d.z),tp=Math.atan2(d.y,Math.hypot(d.x,d.z));
       let dy=ty-S.yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));S.yaw+=dy*Math.min(1,dt*5);S.pitch+=(Math.max(-.3,Math.min(.16,tp*.6-.08))-S.pitch)*Math.min(1,dt*3);}
   }else S.pitch+=(-.17+(S.phase==='run'||S.phase==='decide'?S.pitchOff||0:0)-S.pitch)*Math.min(1,dt*4);
-  const breathe=S.phase==='decide'?Math.sin(now/600)*.012:0,bob=S.phase==='run'?Math.sin(S.t*9)*.035:0;
+  const breathe=S.phase==='decide'?Math.sin(now/600)*.0012:0,bob=S.phase==='run'?Math.sin(S.t*9)*.035:0;
   S.shake=Math.max(0,S.shake-dt*1.6);const sh=S.shake*S.shake;
   eyeE.set(S.pitch+breathe+(Math.random()-.5)*sh*.05,S.yaw+(Math.random()-.5)*sh*.05,0);eyeQ.setFromEuler(eyeE);
   const cinema=S.phase==='cine'||(P&&P.cine&&P.cine!=='sack'&&S.phase==='throw'&&P.ev&&S.t>=tbOf(P)-.55);
