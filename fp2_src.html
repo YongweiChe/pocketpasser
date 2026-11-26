@@ -2144,7 +2144,7 @@ function update(dt,sdt,now){
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<1?95:66;cam.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(host);resize();
 let last=performance.now();
-function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;
+function loop(){const now=performance.now();const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;   // one clock for everything (deadlines are set with performance.now())
   if(S.paused){requestAnimationFrame(loop);return;}   // Esc menu: the play is frozen; closePause() shifts the deadlines
   if(S.phase!=='idle'){const pl=play();
     if((S.tutCard&&S.tutCard.startsWith('pre'))||S.tutGap)S.memoEnd=Math.max(S.memoEnd,now+12000);
