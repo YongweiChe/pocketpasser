@@ -592,8 +592,6 @@ function bledScene(paper,cards,onDone,end){const el=$('bled'),pp=el.querySelecto
 function bledIntro(){const best=+(store.get('bledsoe')||0);
   bledScene({date:'Monday, April 17, 2000',head:'Patriots draft QB Tom Brady',deck:'Michigan passer goes 199th overall in the sixth round. Team insists Bledsoe’s job is safe.'},[
     ['Foxborough, Massachusetts · 2000','You are Drew Bledsoe.',['First overall pick. Franchise quarterback. The face of the New England Patriots for seven seasons.','Nobody in this town has ever asked who your backup is.'],'Next'],
-    ['The coach','Bill Belichick.',['Your new head coach doesn’t do sentiment and doesn’t do speeches.','He watches the film. And the film doesn’t lie.'],'Next'],
-    ['The kid','Tom Brady.',['Pick 199. Fourth quarterback on the depth chart. First one in the building every morning, last one out every night.','He’s watching every throw you make.'],'Next'],
     ['Drew Bledsoe mode','Hold on to your job.',['Every snap is graded against the real NFL quarterback’s decision, and it all adds up.',`Keep your running EPA above <b>${BLED_FLOOR.toFixed(1)}</b>. Drop below it and Belichick makes the call.`+(best?` Your longest run: <b>${best} snaps</b>.`:'')],'Take the field','Back']
   ],r=>{if(r==='ok')begin('bledsoe');else if(S.round)goHome();},false);}
 function bledEnd(){const R=S.round,n=R.res.filter(Boolean).length,t=bledTot(),best=+(store.get('bledsoe')||0),rec=n>best;if(rec)store.set('bledsoe',String(n));saveRound('bledsoe',t,null,n);
