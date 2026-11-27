@@ -1401,7 +1401,8 @@ async function pickRound(kind,arg){const req=++roundReq;await BDB.ready;if(req!=
   const ent=kind==='daily'?dailyPool():kind==='versus'?vsPool(arg):practicePool();   // Bledsoe mode starts from a practice-style batch and keeps adding more
   if(ent.some(e=>e.i==null))banner('Loading plays…');
   try{const ix=await loadEntries(ent);if(req===roundReq&&$('start').hidden)startRound(kind,arg,ix);}catch(e){console.error(e);banner('Couldn’t load the plays');}}
-function startRound(kind,arg,pre){if(!pre&&kind!=='tutorial'&&guestLocked()){showWall(()=>startRound(kind,arg,pre));return;}if(!pre&&kind!=='tutorial'){pickRound(kind,arg);return;}
+function startRound(kind,arg,pre){if(!pre&&!AUTH.settled)return afterAuth(()=>startRound(kind,arg,pre));
+  if(!pre&&kind!=='tutorial'&&guestLocked()){showWall({type:'start',kind,arg:arg||null});return;}if(!pre)clearPending();if(!pre&&kind!=='tutorial'){pickRound(kind,arg);return;}
   const plays=pre||tutPlays();
   if(S.round&&S.round.kind==='tutorial'&&kind!=='tutorial'&&S.userLimit!=null){S.limit=S.userLimit;S.userLimit=null;syncDiff();}
   if(kind==='tutorial'&&S.userLimit==null)S.userLimit=S.limit;
@@ -1454,20 +1455,31 @@ function tutApply(){if(!isTut())return;S.limit=tutGuided()?TUT[0].limit:(coarse?
    Off until SUPA.url/key are filled in (the anon key is public by design; row-level security in supabase/schema.sql protects the data).
    Guests get GUEST_ROUNDS rounds (of 6; a Bledsoe run counts as one) outside the tutorial, then a sign-in wall before the next round. */
 const SUPA={url:'https://nilgjuxrbqbvsckctmxc.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pbGdqdXhyYnFidnNja2N0bXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3ODk0ODEsImV4cCI6MjExMTM2NTQ4MX0.iewxdQOvKyRbKxgmK-zXqp0-NFa_Cy1wVzhumQXMn1A'},GUEST_ROUNDS=2;   // anon key: public by design (row-level security guards the tables)
-const AUTH={client:null,user:null,name:'',ready:null};
+const AUTH={client:null,user:null,name:'',ready:null,settled:false};
 const unSuggest=u=>{const m=u&&u.user_metadata||{},f=((m.full_name||m.name||'').trim().split(/\s+/)[0]||'Rookie').replace(/[^A-Za-z0-9_]/g,'').slice(0,11)||'Rookie';return f.length<3?'QB_'+f:f;};
 AUTH.ready=(async()=>{if(!SUPA.url||!SUPA.key)return;
   try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
-    AUTH.client=createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'pkce'}});
-    const {data}=await AUTH.client.auth.getSession();setUser(data.session&&data.session.user);
-    AUTH.client.auth.onAuthStateChange((_e,sess)=>setUser(sess&&sess.user));}catch(e){console.error('accounts unavailable',e);AUTH.client=null;}
-  syncAcct();})();
+    const cl=createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,detectSessionInUrl:false,flowType:'pkce'}});
+    const {data}=await cl.auth.getSession();AUTH.client=cl;setUser(data.session&&data.session.user);
+    cl.auth.onAuthStateChange((_e,sess)=>setUser(sess&&sess.user));}catch(e){console.error('accounts unavailable',e);AUTH.client=null;}
+  AUTH.settled=true;syncAcct();})();
+// rounds wait (briefly) for the account check, so the guest limit sees who you are
+function afterAuth(fn){if(AUTH.settled)return fn();Promise.race([AUTH.ready,new Promise(r=>setTimeout(r,3000))]).then(()=>{AUTH.settled=true;fn();});}
 // usernames: unique (case-insensitive, 3-16 letters/digits/_), picked after the first sign-in; the board shows only these.
 // AUTH.named resolves once the player has a username (at once if they already do), so play resumes after picking one.
 function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;LB.me=u?u.id:null;LB.canWrite=!!u;
-  if(!u){AUTH.name='';AUTH.named=null;syncAcct();return;}
-  if(u.id!==was){AUTH.name='';syncAcct();AUTH.named=loadUsername(u);
-    AUTH.named.then(()=>{$('wall').hidden=true;const c=WALL_CONT;WALL_CONT=null;if(c){sessionStorage.removeItem('qbcam.resume');c();}else resumeAfterSignIn();});}}
+  if(!u){AUTH.name='';AUTH.named=null;   // signed out: close the username box and release anything waiting on it
+    if(!$('unSheet').hidden)$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d('');syncAcct();return;}
+  if(u.id!==was){AUTH.name='';syncAcct();const named=AUTH.named=loadUsername(u);
+    named.then(name=>{if(!AUTH.user||AUTH.user.id!==u.id||!name)return;$('wall').hidden=true;runPending();});}}
+// the one step waiting on a sign-in: {type:'start',kind,arg} (the round the wall stopped) or {type:'claim',tot,wins,day}
+// (put a finished Today's 6 on the board). In memory for the popup; in sessionStorage across a full-page redirect.
+let PENDING=null;
+function setPending(p){PENDING=p;}
+function clearPending(){PENDING=null;try{sessionStorage.removeItem('qbcam.pending');}catch(e){}}
+function runPending(){let p=PENDING;if(!p)try{p=JSON.parse(sessionStorage.getItem('qbcam.pending')||'null');}catch(e){}clearPending();if(!p)return;
+  if(p.type==='start')begin(p.kind,p.arg);
+  else if(p.type==='claim'&&p.day===dayKeyISO())postDaily(p.tot,p.wins,!$('results').hidden&&S.phase==='results');}
 // a popup sign-in can't always message back (Google's pages cut the popup off from this window), so also watch for the
 // session appearing: a broadcast from auth.html, the session being written to storage, or coming back to this window
 async function checkSignedIn(){if(!AUTH.client||AUTH.user)return;try{const {data}=await AUTH.client.auth.getSession();const u=data.session&&data.session.user;if(u)setUser(u);}catch(e){}}
@@ -1509,19 +1521,11 @@ async function signIn(){if(!AUTH.client)return;
   const back=location.pathname+location.search;
   const {data,error}=await AUTH.client.auth.signInWithOAuth({provider:'google',options:{skipBrowserRedirect:true,redirectTo:new URL('auth.html?back='+encodeURIComponent(back),location.href).href}});
   if(error||!data||!data.url){if(w)w.close();return;}
-  if(w&&!w.closed)w.location.href=data.url;else{try{localStorage.removeItem('qbcam.authPopupAt');}catch(e){}saveResume();location.href=data.url;}}
+  if(w&&!w.closed)w.location.href=data.url;else{try{localStorage.removeItem('qbcam.authPopupAt');if(PENDING)sessionStorage.setItem('qbcam.pending',JSON.stringify(PENDING));}catch(e){}location.href=data.url;}}
 window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.pp==='auth')checkSignedIn();});
 const guestLocked=()=>!!AUTH.client&&!AUTH.user&&+(store.get('guestRounds')||0)>=GUEST_ROUNDS;
-let WALL_CONT=null;   // what the wall interrupted: run it once the player has signed in (popup flow)
-function showWall(cont){WALL_CONT=cont||null;$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
-// keep the round across the Google redirect (plays by key, so season plays reload too)
-function saveResume(){const R=S.round;if(!R||R.kind==='tutorial'){sessionStorage.removeItem('qbcam.resume');return;}
-  try{sessionStorage.setItem('qbcam.resume',JSON.stringify({kind:R.kind,qb:R.qb,keys:R.plays.map(i=>PLAYS[i].meta.key),i:R.i,res:R.res,over:!!R.over}));}catch(e){}}
-async function resumeAfterSignIn(){let r;try{r=JSON.parse(sessionStorage.getItem('qbcam.resume')||'null');}catch(e){}if(!r)return;sessionStorage.removeItem('qbcam.resume');
-  await BDB.ready;const ent=r.keys.map(k=>{const i=PLAYS.findIndex(p=>p.real&&p.meta.key===k);return i>=0?{i}:{key:k};});
-  let ix;try{ix=await loadEntries(ent);}catch(e){return;}
-  $('wall').hidden=true;begin(r.kind,r.qb,ix);Object.assign(S.round,{res:r.res||[],over:r.over});S.round.i=r.i;S.results={};next();}
-$('wallGo').onclick=()=>signIn();$('wallHome').onclick=()=>{$('wall').hidden=true;goHome();};
+function showWall(p){setPending(p);$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
+$('wallGo').onclick=()=>signIn();$('wallHome').onclick=()=>{$('wall').hidden=true;clearPending();goHome();};
 $('acctBtn').onclick=()=>{if(!AUTH.client)return;if(AUTH.user)openMe();else signIn();};
 $('meOut').onclick=async()=>{$('meSheet').hidden=true;await AUTH.client.auth.signOut();setUser(null);};
 $('meClose').onclick=()=>{$('meSheet').hidden=true;};$('meRename').onclick=()=>pickUsername(AUTH.user,false);$('mePlay').onclick=()=>{$('meSheet').hidden=true;$('go').click();};
@@ -1578,6 +1582,15 @@ function saveSnap(r,key){if(AUTH.user)AUTH.client.from('snaps').insert({kind:S.r
 function saveRound(kind,total,wins,n,qb,res){if(!AUTH.user)return;const r3=v=>Math.round((+v||0)*1000)/1000;
   const rs=res?res.filter(Boolean).map(r=>({key:r.key||'',diff:r3(r.diff),mine:r3(r.mine),pro:r3(r.pro),sit:r.sit||'',who:r.who||'',opp:r.opp||'',desc:r.desc||'',real:!!r.real})):null;
   AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO(),res:rs}).then(()=>{},()=>{});}
+// post a finished Today's 6 for the signed-in player (results page: show it there, with a retry; otherwise open the board)
+const pk=()=>AUTH.client?(AUTH.user?'daily.'+AUTH.user.id:null):'daily';
+const postedToday=()=>{const k=pk();return !!k&&store.get(k)===dayKey();},markPosted=()=>{const k=pk();if(k)store.set(k,dayKey());};
+async function postDaily(tot,wins,onResults){const note=t=>{if(onResults)$('rsNote').innerHTML=t;};
+  note('Posting to today’s board…');if(AUTH.named)await AUTH.named;if(!AUTH.user||!AUTH.name){note('Sign in to put this score on today’s board.');return;}
+  const r=await submitScore(AUTH.name,tot,wins);
+  if(r.ok||r.why==='already'){markPosted();const msg=r.ok?'Posted to today’s board as '+esc(AUTH.name)+'.':'Your first run today ('+fmt(r.score)+') is already on the board. Only that one counts.';
+    if(onResults){note(msg);try{renderBoard(await loadBoard(),tot,true);}catch(e){}}else{await openBoard();$('hbNote').innerHTML=msg;}return;}
+  if(onResults){note('Couldn’t reach the leaderboard. <button class="go" id="rsRetry">Try again</button>');$('rsRetry').onclick=()=>postDaily(tot,wins,true);}}
 const dayKeyISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 // shared leaderboard: Supabase when configured, else the claude.ai artifact db; absent otherwise
 const LB={db:null,me:null,canWrite:null};
@@ -1708,6 +1721,7 @@ function anTend(res,W){const n=res.length,c=f=>res.filter(f).length,inB=(a,l,h)=
     `<p class="mute anHint" style="margin:2px 0 0">Out of ${n} snaps. Completions and interceptions for you are the model’s roll; for ${esc(W)}, what really happened.</p>`;}
 async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.length,tot=res.reduce((a,r)=>a+r.diff,0),wins=res.filter(r=>r.diff>=0).length,
     isDaily=R.kind==='daily',isTut=R.kind==='tutorial',isVs=R.kind==='versus',W=isVs?R.qb.split(' ').pop():'the pro',A=R.archive;
+  const firstToday=isDaily&&!A&&(store.get('dailyDone')||'').split('|')[0]!==dayKey();
   if(isDaily&&!A&&(store.get('dailyDone')||'').split('|')[0]!==dayKey())store.set('dailyDone',dayKey()+'|'+tot.toFixed(2));
   let vsNote='';if(isVs){const old=vsRec(R.qb);if(!old||tot>old.best){store.set('vs.'+R.qb,tot.toFixed(2)+'|'+wins+'|'+n);vsNote=old?` New best against ${W} (was ${fmt(old.best)}).`:'';}else vsNote=` Your best against ${W}: ${fmt(old.best)}.`;}
   S.phase='results';clearTimeout(S.revealTO);hideReview();$('reveal').hidden=true;$('res').hidden=true;banner('');document.body.classList.add('resultsOn');
@@ -1730,15 +1744,11 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   if(A){$('rsNote').textContent=A.ranked?'This was your ranked run that day.':'';try{renderBoard(await loadBoard(A.day),tot,true);}catch(e){$('rsBoard').innerHTML='<p class="mute">Couldn’t reach the leaderboard right now.</p>';}return;}
   // "already posted today" is remembered per account (it was per device: signing out and back in, or a second person on
   // the same phone, silently skipped posting); the server has the final say either way
-  const pk=()=>AUTH.client?(AUTH.user?'daily.'+AUTH.user.id:null):'daily',posted=()=>{const k=pk();return !!k&&store.get(k)===dayKey();},markPosted=()=>{const k=pk();if(k)store.set(k,dayKey());};
-  const done=posted();
-  if(isDaily&&AUTH.user&&!done){$('rsNote').textContent='Posting to today’s board…';if(AUTH.named)await AUTH.named;const r=await submitScore(AUTH.name,tot,wins);
-    if(r.ok||r.why==='already'){markPosted();$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
-    else $('rsNote').textContent='Couldn’t reach the leaderboard.';}
-  else if(isDaily&&AUTH.client&&!AUTH.user&&!done){$('rsNote').innerHTML='Sign in to put this score on today’s board. <button class="go" id="rsClaim">Sign in to claim your spot</button>';
-    $('rsClaim').onclick=()=>{WALL_CONT=async()=>{$('rsNote').textContent='Posting to today’s board…';const r=await submitScore(AUTH.name,tot,wins);
-        if(r.ok||r.why==='already'){markPosted();$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
-        else $('rsNote').textContent='Couldn’t reach the leaderboard. Try again later.';try{renderBoard(await loadBoard(),tot,true);}catch(e){}};signIn();};}
+  const done=postedToday();
+  if(isDaily&&AUTH.user&&!done)postDaily(tot,wins,true);
+  else if(isDaily&&AUTH.client&&!AUTH.user&&!firstToday)$('rsNote').textContent='Only your first run of today’s 6 can go on the board.';
+  else if(isDaily&&AUTH.client&&!AUTH.user){$('rsNote').innerHTML='Sign in to put this score on today’s board. <button class="go" id="rsClaim">Sign in to claim your spot</button>';
+    $('rsClaim').onclick=()=>{setPending({type:'claim',tot,wins,day:dayKeyISO()});signIn();};}
   else if(isDaily&&LB.db&&!done&&LB.canWrite!==false){$('rsForm').hidden=false;$('rsIni').value=store.get('ini')||'';setTimeout(()=>$('rsIni').focus(),50);
     $('rsForm').onsubmit=async e=>{e.preventDefault();const ini=($('rsIni').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);if(ini.length<1){$('rsNote').textContent='Enter up to 3 letters.';return;}
       store.set('ini',ini);$('rsSubmit').disabled=true;$('rsNote').textContent='Posting…';const r=await submitScore(ini,tot,wins);
@@ -2093,9 +2103,10 @@ function homeStats(){const n=poolAll().length;
   $('today').textContent=dayLabel();
   $('goVs').hidden=!qbIndex().length;}
 function showHome(){homeStats();syncSound();document.body.classList.add('home');$('start').hidden=false;setTimeout(()=>$('go').focus({preventScroll:true}),30);}
-function begin(kind,arg,pre){if(!pre&&(kind||'daily')!=='tutorial'&&guestLocked()){showWall(()=>begin(kind,arg,pre));return;}H.sound=soundOn();$('start').hidden=true;document.body.classList.remove('home');
+function begin(kind,arg,pre){if(!pre&&!AUTH.settled)return afterAuth(()=>begin(kind,arg,pre));
+  if(!pre&&(kind||'daily')!=='tutorial'&&guestLocked()){showWall({type:'start',kind:kind||'daily',arg:arg||null});return;}if(!pre)clearPending();H.sound=soundOn();$('start').hidden=true;document.body.classList.remove('home');
   AU.start(!H.sound);H.started=true;syncSound();startRound(kind||'daily',arg,pre);}
-function goHome(){closePause(true);AU.unslow();clearTimeout(S.revealTO);hideReview();if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}AU.stopCadence();ANN.stop();
+function goHome(){closePause(true);if(PENDING&&PENDING.type==='claim')clearPending();AU.unslow();clearTimeout(S.revealTO);hideReview();if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}AU.stopCadence();ANN.stop();
   if(S.round&&S.round.kind==='tutorial'&&S.userLimit!=null){S.limit=S.userLimit;S.userLimit=null;syncDiff();}
   S.round=null;S.results={};S.plan=null;S.phase='idle';S.t=0;S.pi=0;S.advanceAt=0;S.cadence=false;S.reviewOn=false;
   S.tutCard=null;for(const id of ['results','reveal','tut','legend','res','prog','nextHint'])$(id).hidden=true;
@@ -2336,7 +2347,7 @@ addEventListener('error',e=>reportErr(e.error||e.message,'window'));addEventList
 // iPhone Safari can drop the 3D context under memory pressure: say so (and offer a reload) instead of showing a frozen frame
 renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();reportErr(new Error('webgl context lost'),'gl');
   let o=document.getElementById('glLost');if(!o){o=document.createElement('div');o.id='glLost';o.innerHTML='<div><b>The graphics reset</b><p>Your browser paused the 3D view.</p><button class="go">Tap to reload</button></div>';
-    o.querySelector('button').onclick=()=>{try{saveResume();}catch(_){}location.reload();};document.body.appendChild(o);}o.hidden=false;});
+    o.querySelector('button').onclick=()=>location.reload();document.body.appendChild(o);}o.hidden=false;});
 renderer.domElement.addEventListener('webglcontextrestored',()=>{const o=document.getElementById('glLost');if(o)o.hidden=true;});
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<1?95:66;cam.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(host);resize();
