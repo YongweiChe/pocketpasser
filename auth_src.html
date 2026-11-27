@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Signing in · Pocket Passer</title><link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>html,body{margin:0;height:100%;background:#070d18;color:#e8efe9;font:16px/1.4 system-ui,sans-serif}body{display:grid;place-items:center;text-align:center;padding:16px;box-sizing:border-box}</style></head>
+<body><p id="m">Signing you in…</p>
+<script type="module">
+// Google sends the player here (via Supabase) with ?code=…; trade it for a session (the PKCE verifier is in this origin's
+// localStorage, written by the game), then tell the game window and close. Opened without a game window: go back to the game.
+const SUPA=/*SUPA*/;
+const q=new URL(location.href).searchParams,back=q.get('back')||'./';let ok=false;
+try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
+  const c=createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,detectSessionInUrl:false,flowType:'pkce'}});
+  if(q.get('code')){const {error}=await c.auth.exchangeCodeForSession(q.get('code'));ok=!error;if(error)console.error(error);}}catch(e){console.error(e);}
+const safeBack=back.startsWith('/')&&!back.startsWith('//')?back:'./';
+if(window.opener&&!window.opener.closed){try{window.opener.postMessage({pp:'auth',ok},location.origin);}catch(e){}
+  document.getElementById('m').textContent=ok?'Signed in. You can close this window.':'Sign-in didn’t finish. Close this window and try again.';setTimeout(()=>window.close(),ok?150:2500);}
+else location.replace(safeBack);
+</script></body></html>

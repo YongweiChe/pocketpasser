@@ -96,7 +96,8 @@ body.playing #res{display:none}
 body.home #game>.hud:not(#start){visibility:hidden}
 #start{inset:0;z-index:10;overflow:auto;background:linear-gradient(90deg,rgba(5,9,16,.95) 0%,rgba(5,9,16,.88) 50%,rgba(5,9,16,.62) 100%)}
 .home{min-height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:24px;padding:22px clamp(16px,5vw,64px) 20px;max-width:1180px}
-.hmTop{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.hmTop{display:flex;align-items:center;justify-content:flex-start;gap:8px 18px;flex-wrap:wrap;padding-right:150px}
+@media (max-width:440px){.hmTop{padding-right:56px}}
 .wordmark{font:700 22px/1 "Retro",system-ui,sans-serif;letter-spacing:0;color:var(--ink)}
 .wordmark span{color:var(--gold)}
 .hmMain{display:grid;gap:34px;align-content:center;max-width:560px}
@@ -308,7 +309,20 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .vsHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .vsHead small{color:var(--gold);font-weight:600}.vsHead h2{font:700 40px/1 "Retro",system-ui,sans-serif;margin:2px 0 4px}.vsHead p{margin:0;font-size:14px}
 #vsClose{min-width:44px;font-size:18px}
-#hbClose{min-width:44px;font-size:18px}.hbBox{max-width:520px}.hbList{overflow:auto;max-height:min(56vh,520px)}.hbList .lb{margin:0}
+#hbClose,#meClose{min-width:44px;font-size:18px}
+.hmTop .acct{position:absolute;z-index:2;top:max(18px,env(safe-area-inset-top));right:max(18px,env(safe-area-inset-right));min-height:36px;padding:0 14px;font:600 14px "Retro",system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px}
+.hmTop .acct i{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;background:var(--gold);color:#0b1420;font-size:12px}
+.meBox{max-width:560px}.meRank{margin:6px 0 0;font:600 15px "Retro",system-ui,sans-serif;color:var(--band,var(--ink))}.meRank small{display:block;margin-top:4px;font:14px "RetroText",system-ui,sans-serif;color:var(--mute)}
+.meTiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.meTile{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.08);padding:12px 10px}
+.meTile b{display:block;font:700 22px/1.1 "Retro",system-ui,sans-serif;color:var(--ink)}.meTile b.pos{color:#4ade80}.meTile b.neg{color:#ff6b6b}.meTile b.hot{color:#f5c518}
+.meTile span{display:block;margin-top:6px;font-size:13px;color:var(--mute)}
+.meForm h3,.meBests h3{margin:14px 0 6px;font:600 13px "Retro",system-ui,sans-serif;color:var(--mute);letter-spacing:.04em}
+.meForm svg{display:block;width:100%;height:auto}.meForm rect{shape-rendering:crispEdges}.meForm rect:hover{opacity:.75}
+.meBests ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}.meBests li{display:flex;justify-content:space-between;gap:12px;padding:7px 10px;background:rgba(255,255,255,.035)}.meBests li b{font-family:"Retro",system-ui,sans-serif;font-size:15px}
+.meEmpty{margin:18px 0;color:var(--mute)}.meBtns{justify-content:space-between}
+@media (max-width:440px){.hmTop .acct .nm{display:none}.hmTop .acct{padding:0 7px}.hmTop .acct:not(:has(i)){padding:0 12px}}
+@media (max-width:560px){.meTiles{grid-template-columns:1fr 1fr}.meTile b{font-size:20px}}.hbBox{max-width:520px}.hbList{overflow:auto;max-height:min(56vh,520px)}.hbList .lb{margin:0}
 #vsQ{font:500 16px "RetroText",system-ui,sans-serif;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#0a1120;color:var(--ink);width:100%}
 #vsQ:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .vsList{overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;align-content:start;padding:2px}
@@ -529,7 +543,7 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
     <div class="hud escHint" aria-hidden="true"><kbd>Esc</kbd> menu</div>
   <div class="hud" id="start">
     <div class="home">
-      <header class="hmTop"><span class="wordmark">pocketpasser<span>.io</span></span><p id="tune" hidden>Click or press any key for sound</p></header>
+      <header class="hmTop"><span class="wordmark">pocketpasser<span>.io</span></span><p id="tune" hidden>Click or press any key for sound</p><button id="acctBtn" class="acct" hidden>Sign in</button></header>
       <div class="hmMain">
         <section class="hmHero">
           <h1>Think you can outread an NFL&nbsp;quarterback?</h1>
@@ -539,12 +553,17 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
         <nav class="hmModes" aria-label="Game modes">
           <button class="cta" id="go"><span class="ctaMain">Play today’s 6 snaps</span><span class="ctaMeta"><span id="today"></span> · <span id="hmDaily">Not played yet</span></span></button>
           <p class="hmAlt"><button id="goPractice">Practice</button><button id="goVs">Versus a real QB</button><button id="tutBtn">Tutorial</button><button id="goBled">Drew Bledsoe mode</button><button id="goBoard" hidden>Leaderboard</button></p>
-          <div class="hmSet"><button id="soundPick" aria-pressed="true">Sound: on</button><button id="annPick" aria-pressed="true">Announcer: on</button><button id="keysPick">Controls</button><button id="acctBtn" hidden>Sign in</button></div>
+          <div class="hmSet"><button id="soundPick" aria-pressed="true">Sound: on</button><button id="annPick" aria-pressed="true">Announcer: on</button><button id="keysPick">Controls</button></div>
         </nav>
       </div>
       <div class="vsSheet" id="firstQ" hidden role="dialog" aria-modal="true" aria-labelledby="fqH"><div class="vsBox fqBox">
         <small>First time here?</small><h2 id="fqH">Want a quick tutorial?</h2><p class="mute">Three real plays, about two minutes. It shows you how a snap works before your first real round.</p>
         <div class="fqBtns"><button class="go" id="fqYes">Yes, show me</button><button class="ghost" id="fqNo">No, just play</button></div>
+      </div></div>
+      <div class="vsSheet" id="meSheet" hidden role="dialog" aria-modal="true" aria-labelledby="meH"><div class="vsBox meBox">
+        <header class="vsHead"><div><small id="meSince">Your career</small><h2 id="meH">Player</h2><p class="meRank" id="meRank"></p></div><button id="meClose" aria-label="Close">✕</button></header>
+        <div id="meBody"></div>
+        <div class="fqBtns meBtns"><button class="go" id="mePlay">Play today’s 6</button><button class="ghost" id="meOut">Sign out</button></div>
       </div></div>
       <div class="vsSheet" id="boardSheet" hidden role="dialog" aria-modal="true" aria-labelledby="hbH"><div class="vsBox hbBox">
         <header class="vsHead"><div><small id="hbDay">Today’s 6</small><h2 id="hbH">Today’s leaderboard</h2><p class="mute" id="hbNote"></p></div><button id="hbClose" aria-label="Close">✕</button></header>
@@ -1367,7 +1386,7 @@ async function pickRound(kind,arg){const req=++roundReq;await BDB.ready;if(req!=
   const ent=kind==='daily'?dailyPool():kind==='versus'?vsPool(arg):practicePool();   // Bledsoe mode starts from a practice-style batch and keeps adding more
   if(ent.some(e=>e.i==null))banner('Loading plays…');
   try{const ix=await loadEntries(ent);if(req===roundReq&&$('start').hidden)startRound(kind,arg,ix);}catch(e){console.error(e);banner('Couldn’t load the plays');}}
-function startRound(kind,arg,pre){if(!pre&&kind!=='tutorial'&&guestLocked()){showWall();return;}if(!pre&&kind!=='tutorial'){pickRound(kind,arg);return;}
+function startRound(kind,arg,pre){if(!pre&&kind!=='tutorial'&&guestLocked()){showWall(()=>startRound(kind,arg,pre));return;}if(!pre&&kind!=='tutorial'){pickRound(kind,arg);return;}
   const plays=pre||tutPlays();
   if(S.round&&S.round.kind==='tutorial'&&kind!=='tutorial'&&S.userLimit!=null){S.limit=S.userLimit;S.userLimit=null;syncDiff();}
   if(kind==='tutorial'&&S.userLimit==null)S.userLimit=S.limit;
@@ -1430,11 +1449,23 @@ AUTH.ready=(async()=>{if(!SUPA.url||!SUPA.key)return;
   syncAcct();})();
 function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;AUTH.name=u?authName(u):'';LB.me=u?u.id:null;LB.canWrite=!!u;syncAcct();
   if(u&&u.id!==was){AUTH.client.from('profiles').upsert({id:u.id,display_name:AUTH.name}).then(()=>{},()=>{});resumeAfterSignIn();}}
-function syncAcct(){const b=$('acctBtn');if(!b)return;b.hidden=!AUTH.client;b.textContent=AUTH.user?AUTH.name+' · Sign out':'Sign in with Google';}
-async function signIn(){if(!AUTH.client)return;saveResume();
-  await AUTH.client.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});}
+function syncAcct(){const b=$('acctBtn');if(!b)return;b.hidden=!AUTH.client;
+  if(AUTH.user)b.innerHTML='<i>'+esc((AUTH.name||'?')[0].toUpperCase())+'</i><span class="nm">'+esc(AUTH.name)+'</span>';else b.textContent='Sign in';
+  b.title=AUTH.user?'Your stats':'Sign in with Google to save your scores';}
+// Google sign-in in a popup: the game stays put. auth.html (same origin) finishes the sign-in and tells us; if the popup is
+// blocked, fall back to a full-page redirect (the round is saved and resumes after the redirect back).
+async function signIn(){if(!AUTH.client)return;
+  const w=window.open('','ppauth','popup,width=500,height=650');if(w)try{w.document.write('<body style="background:#070d18;color:#e8efe9;font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0">Opening Google…</body>');}catch(e){}
+  const back=location.pathname+location.search;
+  const {data,error}=await AUTH.client.auth.signInWithOAuth({provider:'google',options:{skipBrowserRedirect:true,redirectTo:new URL('auth.html?back='+encodeURIComponent(back),location.href).href}});
+  if(error||!data||!data.url){if(w)w.close();return;}
+  if(w&&!w.closed)w.location.href=data.url;else{saveResume();location.href=data.url;}}
+window.addEventListener('message',async e=>{if(e.origin!==location.origin||!e.data||e.data.pp!=='auth'||!AUTH.client)return;
+  const {data}=await AUTH.client.auth.getSession();const u=data.session&&data.session.user;if(!u)return;
+  sessionStorage.removeItem('qbcam.resume');setUser(u);if(!$('wall').hidden){$('wall').hidden=true;const c=WALL_CONT;WALL_CONT=null;if(c)c();}});
 const guestLocked=()=>!!AUTH.client&&!AUTH.user&&+(store.get('guestSnaps')||0)>=GUEST_SNAPS;
-function showWall(){$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
+let WALL_CONT=null;   // what the wall interrupted: run it once the player has signed in (popup flow)
+function showWall(cont){WALL_CONT=cont||null;$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
 // keep the round across the Google redirect (plays by key, so season plays reload too)
 function saveResume(){const R=S.round;if(!R||R.kind==='tutorial'){sessionStorage.removeItem('qbcam.resume');return;}
   try{sessionStorage.setItem('qbcam.resume',JSON.stringify({kind:R.kind,qb:R.qb,keys:R.plays.map(i=>PLAYS[i].meta.key),i:R.i,res:R.res,over:!!R.over}));}catch(e){}}
@@ -1443,7 +1474,40 @@ async function resumeAfterSignIn(){let r;try{r=JSON.parse(sessionStorage.getItem
   let ix;try{ix=await loadEntries(ent);}catch(e){return;}
   $('wall').hidden=true;begin(r.kind,r.qb,ix);Object.assign(S.round,{res:r.res||[],over:r.over});S.round.i=r.i;S.results={};next();}
 $('wallGo').onclick=()=>signIn();$('wallHome').onclick=()=>{$('wall').hidden=true;goHome();};
-$('acctBtn').onclick=async()=>{if(!AUTH.client)return;if(AUTH.user){await AUTH.client.auth.signOut();setUser(null);}else signIn();};
+$('acctBtn').onclick=()=>{if(!AUTH.client)return;if(AUTH.user)openMe();else signIn();};
+$('meOut').onclick=async()=>{$('meSheet').hidden=true;await AUTH.client.auth.signOut();setUser(null);};
+$('meClose').onclick=()=>{$('meSheet').hidden=true;};$('mePlay').onclick=()=>{$('meSheet').hidden=true;$('go').click();};
+// player page: career numbers from your own saved snaps and rounds (row-level security: only yours are readable)
+async function openMe(){if(!AUTH.user)return;const sh=$('meSheet'),body=$('meBody');sh.hidden=false;
+  $('meH').textContent=AUTH.name;$('meRank').textContent='';$('meRank').className='meRank';$('meSince').textContent='Your career';
+  $('mePlay').hidden=(store.get('dailyDone')||'').split('|')[0]===dayKey();body.innerHTML='<p class="mute">Loading your stats…</p>';
+  let snaps,rounds;try{const [a,b]=await Promise.all([
+      withTimeout(AUTH.client.from('snaps').select('diff,created_at').order('created_at',{ascending:false}).limit(5000),10000),
+      withTimeout(AUTH.client.from('rounds').select('kind,total,n,wins,qb,day,created_at').order('created_at',{ascending:false}).limit(2000),10000)]);
+    if(a.error||b.error)throw a.error||b.error;snaps=a.data.map(r=>({d:+r.diff,at:r.created_at}));rounds=b.data.map(r=>Object.assign(r,{total:+r.total}));}
+  catch(e){body.innerHTML='<p class="mute">Couldn’t load your stats right now.</p>';return;}
+  const since=[...snaps,...rounds].map(r=>r.created_at||r.at).sort()[0];
+  if(since)$('meSince').textContent='Playing since '+new Date(since).toLocaleDateString(undefined,{month:'short',year:'numeric'});
+  if(!snaps.length){body.innerHTML='<p class="meEmpty">No snaps yet. Play today’s 6 to start your career: every throw you make from now on counts here.</p>';return;}
+  const n=snaps.length,tot=snaps.reduce((a,r)=>a+r.d,0),won=snaps.filter(r=>r.d>0).length,avg=tot/n,t=tierOf(avg);
+  $('meRank').className='meRank band-'+bandOf(t);$('meRank').innerHTML='Career rank: '+t[1]+'<small>'+esc(t[2])+'</small>';
+  // daily streak: consecutive days with a finished Today's 6, counting back from today (or yesterday if today isn't done yet)
+  const days=new Set(rounds.filter(r=>r.kind==='daily').map(r=>r.day));const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  let streak=0;const d=new Date();if(!days.has(iso(d)))d.setDate(d.getDate()-1);while(days.has(iso(d))){streak++;d.setDate(d.getDate()-1);}
+  const tile=(v,l,c)=>`<div class="meTile"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
+  const dailies=rounds.filter(r=>r.kind==='daily'),bestDaily=dailies.length?Math.max(...dailies.map(r=>r.total)):null;
+  const bled=rounds.filter(r=>r.kind==='bledsoe'),bestBled=bled.length?Math.max(...bled.map(r=>r.n)):null;
+  const beaten=new Set(rounds.filter(r=>r.kind==='versus'&&r.total>0&&r.qb).map(r=>r.qb));
+  // recent form: your last 24 snaps vs the pro, oldest on the left
+  const last=snaps.slice(0,24).reverse(),Wd=480,Hd=84,mid=Hd/2,mx=Math.max(.5,...last.map(r=>Math.abs(r.d))),bw=Wd/24;
+  const bars=last.map((r,i)=>{const h=Math.max(2,Math.abs(r.d)/mx*(mid-4));return `<rect x="${(i*bw+1.5).toFixed(1)}" y="${(r.d>=0?mid-h:mid).toFixed(1)}" width="${(bw-3).toFixed(1)}" height="${h.toFixed(1)}" fill="${r.d>=0?'#4ade80':'#ff6b6b'}"><title>${fmt(r.d)} EPA vs the pro · ${new Date(r.at).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</title></rect>`;}).join('');
+  body.innerHTML=`<div class="meTiles">${tile(n,'snaps played')}${tile(Math.round(100*won/n)+'%','snaps you beat the pro')}${tile(fmt(tot),'EPA vs the pros',tot>=0?'pos':'neg')}${tile(streak+(streak?' 🔥':''),'day streak (Today’s 6)',streak?'hot':'')}</div>
+    <div class="meForm"><h3>RECENT FORM · LAST ${last.length} SNAPS</h3><svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Your last ${last.length} snaps: green beat the pro, red didn’t"><line x1="0" x2="${Wd}" y1="${mid}" y2="${mid}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>${bars}</svg></div>
+    <div class="meBests"><h3>BESTS</h3><ul>
+      <li><span>Best Today’s 6</span><b>${bestDaily==null?'—':fmt(bestDaily)+' EPA'}</b></li>
+      <li><span>Longest Drew Bledsoe run</span><b>${bestBled==null?'—':bestBled+' snaps'}</b></li>
+      <li><span>QBs beaten in versus</span><b>${beaten.size}</b></li>
+      <li><span>Rounds finished</span><b>${rounds.length}</b></li></ul></div>`;}
 // scores
 function saveSnap(r,key){if(AUTH.user)AUTH.client.from('snaps').insert({kind:S.round.kind,play_key:key,mine:+r.mine.toFixed(3),pro:+r.pro.toFixed(3),diff:+r.diff.toFixed(3)}).then(()=>{},()=>{});}
 function saveRound(kind,total,wins,n,qb){if(AUTH.user)AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO()}).then(()=>{},()=>{});}
@@ -1638,7 +1702,7 @@ function snap(){if(S.tutCard)return;
   else if(S.phase==='done')next();
   else if(S.phase==='results')startRound(S.round&&S.round.kind==='tutorial'?'daily':'practice');
 }
-function next(){if(S.round&&S.round.kind!=='tutorial'&&guestLocked()){saveResume();showWall();return;}S.advanceAt=0;hideNext();if(S.round&&S.round.kind==='bledsoe'){bledNext();return;}if(S.round){if(S.round.i<S.round.plays.length-1){S.round.i++;loadPlay(S.round.plays[S.round.i]);}else showResults();return;}loadPlay((S.pi+1)%PLAYS.length);}
+function next(){if(S.round&&S.round.kind!=='tutorial'&&guestLocked()){showWall(()=>next());return;}S.advanceAt=0;hideNext();if(S.round&&S.round.kind==='bledsoe'){bledNext();return;}if(S.round){if(S.round.i<S.round.plays.length-1){S.round.i++;loadPlay(S.round.plays[S.round.i]);}else showResults();return;}loadPlay((S.pi+1)%PLAYS.length);}
 function enterDecide(){AU.slowmo();
   S.phase='decide';S.t=play().T;S.decideAt=performance.now();$('prog').classList.add('locked');showArrows(play(),true);$('help').textContent='';S.lastBeat=0;$('away').disabled=false;AU.level(.62,.4);
   banner(coarse?'Press the field, drag to aim, let go to throw':'');
@@ -1950,7 +2014,7 @@ function homeStats(){const n=poolAll().length;
   $('today').textContent=dayLabel();
   $('goVs').hidden=!qbIndex().length;}
 function showHome(){homeStats();syncSound();document.body.classList.add('home');$('start').hidden=false;setTimeout(()=>$('go').focus({preventScroll:true}),30);}
-function begin(kind,arg,pre){if(!pre&&(kind||'daily')!=='tutorial'&&guestLocked()){showWall();return;}H.sound=soundOn();$('start').hidden=true;document.body.classList.remove('home');
+function begin(kind,arg,pre){if(!pre&&(kind||'daily')!=='tutorial'&&guestLocked()){showWall(()=>begin(kind,arg,pre));return;}H.sound=soundOn();$('start').hidden=true;document.body.classList.remove('home');
   AU.start(!H.sound);H.started=true;syncSound();startRound(kind||'daily',arg,pre);}
 function goHome(){closePause(true);AU.unslow();clearTimeout(S.revealTO);hideReview();if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}AU.stopCadence();ANN.stop();
   if(S.round&&S.round.kind==='tutorial'&&S.userLimit!=null){S.limit=S.userLimit;S.userLimit=null;syncDiff();}
@@ -2018,6 +2082,7 @@ window.addEventListener('keydown',e=>{
     if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeKb();return;}if(e.key!=='Tab'&&e.key!=='Enter'&&e.key!==' ')e.stopImmediatePropagation();return;}
   if(e.key==='Escape'&&!$('vsPick').hidden){e.preventDefault();closeVs();return;}
   if(e.key==='Escape'&&!$('boardSheet').hidden){e.preventDefault();$('boardSheet').hidden=true;return;}
+  if(e.key==='Escape'&&!$('meSheet').hidden){e.preventDefault();$('meSheet').hidden=true;return;}
   if(!$('firstQ').hidden){if(e.key==='Escape'){e.preventDefault();$('firstQ').hidden=true;}else if(e.key!=='Tab'&&e.key!=='Enter'&&e.key!==' ')e.stopImmediatePropagation();return;}
   if(S.tutCard&&!PZ&&e.key!=='Escape'){if(normKey(e)===KB.snap||e.key===' '||e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();if(document.activeElement===$('tutAlt'))$('tutAlt').click();else tutClose();}else if(e.key!=='Tab')e.stopImmediatePropagation();return;}
   if(e.key==='Escape'){if(PZ){e.preventDefault();e.stopImmediatePropagation();closePause();}else if(S.phase!=='idle'&&$('start').hidden){e.preventDefault();e.stopImmediatePropagation();openPause();}return;}

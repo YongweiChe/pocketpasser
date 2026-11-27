@@ -79,6 +79,11 @@ public_page = public_page.replace('/*CADENCE*/', 'const CADENCE_FILES=[];', 1).r
 public_page = public_page.replace("fetch('data/bdb_plays/index.json')", "Promise.resolve({ok:false})", 1)   # the site never has the season plays: don't ask (a 404 on every visit)
 open(os.path.join(pub, 'index.html'), 'w').write(public_page)
 shutil.copy(p('real_plays.json'), pub)
+# auth.html: the sign-in popup's landing page, with the same Supabase project as the game
+import re as _re
+_m = _re.search(r"const SUPA=(\{url:'[^']*',key:'[^']*'\})", src)
+_auth = open(p('auth_src.html')).read().replace('/*SUPA*/', _m.group(1) if _m else "{url:'',key:''}", 1)
+open(p('auth.html'), 'w').write(_auth); open(os.path.join(pub, 'auth.html'), 'w').write(_auth)
 for f in os.listdir(p('site')): shutil.copy(p(os.path.join('site', f)), pub)   # favicon, touch icon, link-preview image
 shutil.copy(p('site/favicon-32.png'), os.path.join(pub, 'favicon.ico'))   # browsers and bots still ask for /favicon.ico
 for v in ann_files.values(): shutil.copy(p(v), os.path.join(pub, v))
