@@ -6,6 +6,8 @@
 <title>Pocket Passer</title>
 <meta name="description" content="Think you can outread an NFL quarterback? Real NFL plays from tracking data: take the snap, make the throw, and see if you beat the pro's real decision.">
 <meta name="theme-color" content="#070d18">
+<script>/* the old Render address: send players to the real site (Google sign-in is set up for pocketpasser.io only) */
+if(/\.onrender\.com$/.test(location.hostname))location.replace('https://pocketpasser.io/'+location.search+location.hash);</script>
 <script defer data-domain="pocketpasser.io" src="https://plausible.io/js/script.js"></script>
 <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
 <link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -534,7 +536,7 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
       <div><small id="rsKind"></small><h2 id="rsTotal"></h2><p id="rsSub"></p></div>
       <div class="anBtns"><button class="primary" id="again">Play another 6 snaps</button><button id="rsAlt" hidden></button><button id="rsHome">Home page</button></div>
     </header>
-    <section class="anCard distCard" id="rsRankCard" aria-label="Your rank among players"></section>
+    <section class="anCard distCard" id="rsRankCard" aria-label="Your rank among quarterbacks"></section>
     <div class="anGrid">
       <h3 id="rsTendH" hidden></h3>
       <section class="anCard" id="rsLbCard">
@@ -1710,11 +1712,11 @@ function anRank(res,tot,W){const n=Math.max(1,res.length),avg=tot/n,t=tierOf(avg
   const tick=v=>`<g class="tk"><line x1="${X(v)}" x2="${X(v)}" y1="${base}" y2="${base+4}"/><text x="${X(v)}" y="${base+18}">${v===0?'0 = the pro':(v>0?'+':'')+v}</text></g>`;
   const mxX=X(cl(avg)),lab=`You · top ${Math.max(1,100-pctl)}%`,anchor=mxX<70?'start':mxX>Wd-70?'end':'middle';
   $('rsRankCard').className='anCard distCard band-'+band;
-  $('rsRankCard').innerHTML=`<div class="rkBig"><small>Your rank</small><b>${t[1]}</b><span>${t[2]} ${fmt(avg)} EPA per snap vs ${esc(W)}. Better than about ${pctl}% of players.</span></div>
-    <figure class="dist"><svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Estimated spread of players' EPA per snap; you are at ${fmt(avg)}, better than about ${pctl}%">
+  $('rsRankCard').innerHTML=`<div class="rkBig"><small>Your rank</small><b>${t[1]}</b><span>${t[2]} ${fmt(avg)} EPA per snap vs ${esc(W)}. Better than about ${pctl}% of quarterbacks.</span></div>
+    <figure class="dist"><svg viewBox="0 0 ${Wd} ${Hd}" role="img" aria-label="Estimated spread of quarterbacks' EPA per snap; you are at ${fmt(avg)}, better than about ${pctl}%">
       <line class="base" x1="0" x2="${Wd}" y1="${base}" y2="${base}"/>${bars}${[-2,-1,0,1].map(tick).join('')}
       <line class="you" x1="${mxX}" x2="${mxX}" y1="${top-6}" y2="${base}"/><text class="youT" x="${mxX}" y="${top-12}" text-anchor="${anchor}">${lab}</text></svg>
-      <figcaption class="mute">Estimated spread of players, from the model until real rounds come in.</figcaption></figure>`;
+      <figcaption class="mute">Estimated spread of quarterbacks, from the model.</figcaption></figure>`;
   const svg=$('rsRankCard').querySelector('svg'),tip=$('anTip');
   svg.onpointermove=e=>{const h=e.target.closest('.hit');if(!h){tip.hidden=true;return;}const i=+h.dataset.i;svg.querySelectorAll('.db').forEach(r=>r.classList.toggle('hov',+r.dataset.i===i));const a=lo+i*bw,box=$('results').querySelector('.ana').getBoundingClientRect();
     tip.innerHTML=`<b>${fmt(a)} to ${fmt(a+bw)} EPA per snap</b><div class="r"><span>Players here (est.)</span><span>${(raw[i]*100).toFixed(1)}%</span></div><div class="r"><span>Rank</span><span>${tierOf(a+bw/2)[1]}</span></div>`+(i===me?'<div class="r"><span>You</span><span>'+fmt(avg)+'</span></div>':'');

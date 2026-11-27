@@ -15,6 +15,7 @@ with sync_playwright() as p:
     b=p.chromium.launch(args=['--use-gl=swiftshader','--enable-unsafe-swiftshader'])
     def fresh(init_js='',seed=None,gsi=True):
         ctx=b.new_context(viewport={'width':1280,'height':900})
+        ctx.route('**/rest/v1/client_errors',lambda r:r.fulfill(status=201,body=''))   # tests never write error reports to the real project
         ctx.route('**/supabase-js@2.45.4/+esm',lambda r:r.fulfill(status=200,content_type='application/javascript',body=FAKE))
         ctx.route('https://accounts.google.com/gsi/client',(lambda r:r.fulfill(status=200,content_type='application/javascript',body=GSI_FAKE)) if gsi else (lambda r:r.abort()))
         ctx.add_init_script("if(!sessionStorage.getItem('__seeded')&&!localStorage.getItem('__seeded')){localStorage.setItem('__seeded','1');localStorage.setItem('qbcam.visited','1');"+init_js+"}else{window.__fake=window.__fake||{};}")
