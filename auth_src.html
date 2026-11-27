@@ -10,9 +10,12 @@ const SUPA=/*SUPA*/;
 const q=new URL(location.href).searchParams,back=q.get('back')||'./';let ok=false;
 try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
   const c=createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,detectSessionInUrl:false,flowType:'pkce'}});
-  if(q.get('code')){const {error}=await c.auth.exchangeCodeForSession(q.get('code'));ok=!error;if(error)console.error(error);}}catch(e){console.error(e);}
+  let err='';if(q.get('code')){const {error}=await c.auth.exchangeCodeForSession(q.get('code'));if(error){err=error.message||String(error);console.error(error);}}
+  else if(q.get('error_description'))err=q.get('error_description');
+  // what counts is whether a session exists now (the code can already have been used, e.g. a reload or a second load of this page)
+  const {data}=await c.auth.getSession();ok=!!(data&&data.session);if(!ok&&err)window.__err=err;}catch(e){console.error(e);window.__err=String(e);}
 const safeBack=back.startsWith('/')&&!back.startsWith('//')?back:'./';
 if(window.opener&&!window.opener.closed){try{window.opener.postMessage({pp:'auth',ok},location.origin);}catch(e){}
-  document.getElementById('m').textContent=ok?'Signed in. You can close this window.':'Sign-in didn’t finish. Close this window and try again.';setTimeout(()=>window.close(),ok?150:2500);}
+  document.getElementById('m').textContent=ok?'Signed in. You can close this window.':'Sign-in didn’t finish'+(window.__err?' ('+window.__err+')':'')+'. Close this window and try again.';setTimeout(()=>window.close(),ok?150:2500);}
 else location.replace(safeBack);
 </script></body></html>
