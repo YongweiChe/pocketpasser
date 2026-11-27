@@ -1,8 +1,10 @@
 """Account state machine: sign-in, the 2-round guest wall, claiming a Today's 6 spot, usernames, sign-out, retries.
 Uses a fake Supabase (tests/fake_supabase.js served in place of supabase-js) so timing, sessions and failures are controlled.
-Run with the local server on :8000:  python3 tests/e2e_accounts.py   (expects 12/12 passed)"""
+Run with the local server on :8000:  python3 tests/e2e_accounts.py   (expects 15/15 passed)"""
 import os
 from playwright.sync_api import sync_playwright
+GSI_FAKE="""window.google={accounts:{id:{initialize(o){window.__gsi=o;},renderButton(el){const b=document.createElement('button');b.id='fakeGoogle';b.textContent='Continue with Google';
+  b.onclick=()=>window.__gsi.callback({credential:JSON.stringify({sub:window.__nextSub||'u1',name:window.__nextName||'Test Player'})});el.appendChild(b);}}}};"""
 FAKE=open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'fake_supabase.js')).read()
 URL='http://localhost:8000/fp2.html'
 FIN="""(()=>{const r=__S.round;r.res=r.plays.map((x,i)=>({diff:[.42,-.18,.31,.05,-.2,.36][i],mine:1,pro:.6,sit:'1st & 10',who:'Lamar Jackson',opp:'Dolphins',desc:'',real:true}));__showResults();})()"""
@@ -11,9 +13,10 @@ def check(name,cond,detail=''):
     res.append((name,bool(cond)));print(('PASS ' if cond else 'FAIL ')+name+('' if cond else '  -> '+str(detail)),flush=True)
 with sync_playwright() as p:
     b=p.chromium.launch(args=['--use-gl=swiftshader','--enable-unsafe-swiftshader'])
-    def fresh(init_js='',seed=None):
+    def fresh(init_js='',seed=None,gsi=True):
         ctx=b.new_context(viewport={'width':1280,'height':900})
         ctx.route('**/supabase-js@2.45.4/+esm',lambda r:r.fulfill(status=200,content_type='application/javascript',body=FAKE))
+        ctx.route('https://accounts.google.com/gsi/client',(lambda r:r.fulfill(status=200,content_type='application/javascript',body=GSI_FAKE)) if gsi else (lambda r:r.abort()))
         ctx.add_init_script("if(!sessionStorage.getItem('__seeded')&&!localStorage.getItem('__seeded')){localStorage.setItem('__seeded','1');localStorage.setItem('qbcam.visited','1');"+init_js+"}else{window.__fake=window.__fake||{};}")
         pg=ctx.new_page();pg.errs=[];pg.on('pageerror',lambda e:pg.errs.append(str(e)))
         return ctx,pg
@@ -62,8 +65,8 @@ with sync_playwright() as p:
     pg.click('#rsClaim');popup_signin(ctx);ok=wait(pg,"/Posted to today/.test(document.getElementById('rsNote').textContent)",10000)
     check('6 guest claim via cut-off popup: posted',ok,pg.inner_text('#rsNote'));ctx.close()
 
-    # 7. claim with the popup blocked -> full redirect -> back on the page -> posted, board opens
-    ctx,pg=fresh("localStorage.setItem('fake.db',JSON.stringify({profiles:[{id:'u1',username:'TestQB'}],daily_scores:[],rounds:[],snaps:[]}));")
+    # 7. Google's script blocked -> fallback popup, also blocked -> full redirect -> back on the page -> posted, board opens
+    ctx,pg=fresh("localStorage.setItem('fake.db',JSON.stringify({profiles:[{id:'u1',username:'TestQB'}],daily_scores:[],rounds:[],snaps:[]}));",gsi=False)
     pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#go');wait(pg,"!!__S.round");pg.evaluate(FIN);wait(pg,"!!document.getElementById('rsClaim')")
     pg.evaluate("window.open=()=>null");pg.click('#rsClaim');pg.wait_for_timeout(800)
     pend=pg.evaluate("sessionStorage.getItem('qbcam.pending')")
@@ -103,5 +106,23 @@ with sync_playwright() as p:
     pg.goto(URL);wait(pg,"__AUTH.name==='TestQB'");pg.evaluate("(()=>{const d=new Date();localStorage.setItem('qbcam.daily.uOTHER',d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))})()")
     pg.click('#go');wait(pg,"!!__S.round");pg.evaluate(FIN);ok=wait(pg,"/Posted to today/.test(document.getElementById('rsNote').textContent)")
     check('12 another account posted on this device: this one still posts',ok,pg.inner_text('#rsNote'));ctx.close()
+    # 13. wall -> Sign in -> Google's button -> signed in -> the round starts; box closed
+    ctx,pg=fresh("localStorage.setItem('qbcam.guestRounds','2');localStorage.setItem('fake.db',JSON.stringify({profiles:[{id:'u1',username:'TestQB'}],daily_scores:[],rounds:[],snaps:[]}));")
+    pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#goPractice');wait(pg,"!document.getElementById('wall').hidden");pg.click('#wallGo')
+    shown=wait(pg,"!!document.getElementById('fakeGoogle')");pg.click('#fakeGoogle');ok=wait(pg,"__S.round&&__S.round.kind==='practice'",10000)
+    check('13 Google button: signs in, closes the box, round starts',shown and ok and not pg.is_visible('#gSheet') and not pg.is_visible('#wall'),state(pg));ctx.close()
+
+    # 14. claim with Google's button as a brand-new player -> username -> posted
+    ctx,pg=fresh()
+    pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#go');wait(pg,"!!__S.round");pg.evaluate(FIN);wait(pg,"!!document.getElementById('rsClaim')");pg.click('#rsClaim')
+    wait(pg,"!!document.getElementById('fakeGoogle')");pg.evaluate("window.__nextSub='u7';window.__nextName='Brand New'");pg.click('#fakeGoogle')
+    wait(pg,"!document.getElementById('unSheet').hidden");pg.fill('#unIn','BrandNew7');wait(pg,"!document.getElementById('unGo').disabled");pg.click('#unGo')
+    ok=wait(pg,"/Posted to today.s board as BrandNew7/.test(document.getElementById('rsNote').textContent)",10000)
+    check('14 claim via Google button as a new player: username then posted',ok,pg.inner_text('#rsNote'));ctx.close()
+
+    # 15. Supabase rejects the Google token: clear message, still signed out, box stays for a retry
+    ctx,pg=fresh("window.__fake={idTokenError:'Bad ID token'};")
+    pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#acctBtn');wait(pg,"!!document.getElementById('fakeGoogle')");pg.click('#fakeGoogle');pg.wait_for_timeout(800)
+    check('15 token rejected: message, box stays, signed out',pg.is_visible('#gSheet') and 'work' in pg.inner_text('#gMsg') and pg.evaluate('!__AUTH.user'),pg.inner_text('#gMsg'));ctx.close()
     b.close()
 print(f"\n{sum(r for _,r in res)}/{len(res)} passed")

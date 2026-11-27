@@ -325,6 +325,7 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .meDays ul{max-height:260px;overflow:auto}.meDays li{padding:0;background:none}.meDay{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.035);cursor:pointer}
 .meDay:hover:not(:disabled),.meDay:focus-visible{background:rgba(245,197,24,.12);outline:1px solid rgba(245,197,24,.5)}.meDay:disabled{cursor:default;opacity:.55}
 .meDay small{display:block;color:var(--mute);font-size:13px}.meDay b{font-family:"Retro",system-ui,sans-serif;font-size:15px}.meDay b.pos{color:#4ade80}.meDay b.neg{color:#ff6b6b}
+.gBtn{min-height:48px;margin:16px 0 4px;display:flex;justify-content:center}.gBox{text-align:left}
 .unForm input{width:100%;box-sizing:border-box;margin-top:6px;padding:10px 12px;font:600 20px "Retro",system-ui,sans-serif;background:#070d18;color:var(--ink);border:2px solid var(--line)}
 .unMsg{min-height:1.4em;margin:6px 0 0;font-size:14px;color:var(--mute)}.unMsg.good{color:#4ade80}.unMsg.bad{color:#ff6b6b}
 .unEdit{margin-top:4px;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--mute);font:14px "RetroText",system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.unEdit:hover{color:var(--gold)}.meBtns{justify-content:space-between}
@@ -546,6 +547,11 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
     <small>Your account</small><h2 id="unH">Pick a username</h2><p class="mute" id="unP"></p>
     <form id="unForm" class="unForm"><input id="unIn" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Username"><p id="unMsg" class="unMsg" aria-live="polite"></p>
     <div class="fqBtns"><button class="go" id="unGo" type="submit">Save</button><button class="ghost" id="unSkip" type="button">Skip for now</button><button class="ghost" id="unCancel" type="button" hidden>Cancel</button></div></form>
+  </div></div>
+  <div class="vsSheet" id="gSheet" hidden role="dialog" aria-modal="true" aria-labelledby="gH" style="z-index:31"><div class="vsBox fqBox gBox">
+    <small>Pocket Passer</small><h2 id="gH">Sign in</h2><p class="mute">Save your stats and get on the leaderboard. Only your username is ever shown.</p>
+    <div id="gBtn" class="gBtn"></div><p class="unMsg" id="gMsg" aria-live="polite"></p>
+    <div class="fqBtns"><button class="ghost" id="gCancel">Not now</button></div>
   </div></div>
   <div class="vsSheet" id="wall" hidden role="dialog" aria-modal="true" aria-labelledby="wallH" style="z-index:25"><div class="vsBox fqBox">
     <small>Free rounds used</small><h2 id="wallH">Sign in to keep playing</h2><p class="mute" id="wallP">You’ve played your 2 free rounds. Sign in with Google to keep playing, track your stats and get on today’s leaderboard. You’ll pick up right where you left off.</p>
@@ -1470,6 +1476,7 @@ function afterAuth(fn){if(AUTH.settled)return fn();Promise.race([AUTH.ready,new 
 function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;LB.me=u?u.id:null;LB.canWrite=!!u;
   if(!u){AUTH.name='';AUTH.named=null;   // signed out: close the username box and release anything waiting on it
     if(!$('unSheet').hidden)$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d('');syncAcct();return;}
+  if(!$('gSheet').hidden)$('gSheet').hidden=true;
   if(u.id!==was){AUTH.name='';syncAcct();const named=AUTH.named=loadUsername(u);
     named.then(name=>{if(!AUTH.user||AUTH.user.id!==u.id||!name)return;$('wall').hidden=true;runPending();});}}
 // the one step waiting on a sign-in: {type:'start',kind,arg} (the round the wall stopped) or {type:'claim',tot,wins,day}
@@ -1513,9 +1520,29 @@ $('unCancel').onclick=()=>{if(!AUTH.name)return unSkip();$('unSheet').hidden=tru
 function syncAcct(){const b=$('acctBtn');if(!b)return;b.hidden=!AUTH.client;
   if(AUTH.user)b.innerHTML=AUTH.name?'<i>'+esc(AUTH.name[0].toUpperCase())+'</i><span class="nm">'+esc(AUTH.name)+'</span>':'<span>Account</span>';else b.textContent='Sign in';
   b.title=AUTH.user?'Your stats':'Sign in with Google to save your scores';}
-// Google sign-in in a popup: the game stays put. auth.html (same origin) finishes the sign-in and tells us; if the popup is
+// Sign in with Google's own button (Google Identity Services): Google's chooser runs on this site, so it says
+// "continue to pocketpasser.io"; its ID token (with a hashed nonce) is handed to Supabase. If Google's script is blocked,
+// fall back to the Supabase OAuth popup below.
+const GOOGLE_CLIENT_ID='1015945787208-hfev4fqghnd8rr1n3828174iq6plu5m5.apps.googleusercontent.com';
+let GSI=null;
+function loadGsi(){if(GSI)return GSI;GSI=new Promise((res,rej)=>{const ok=()=>window.google&&google.accounts&&google.accounts.id;if(ok())return res(google.accounts.id);
+    const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;sc.onload=()=>ok()?res(google.accounts.id):rej(new Error('gsi missing'));
+    sc.onerror=()=>rej(new Error('gsi blocked'));document.head.appendChild(sc);setTimeout(()=>rej(new Error('gsi timeout')),8000);});GSI.catch(()=>{GSI=null;});return GSI;}
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+async function signIn(){if(!AUTH.client)return;const sh=$('gSheet'),msg=$('gMsg');msg.textContent='';msg.className='unMsg';
+  $('gBtn').innerHTML='<p class="mute">Loading Google…</p>';sh.hidden=false;
+  let gid;try{gid=await loadGsi();}catch(e){sh.hidden=true;return oauthPopup();}
+  const raw=hex(crypto.getRandomValues(new Uint8Array(16))),hashed=hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)));
+  gid.initialize({client_id:GOOGLE_CLIENT_ID,nonce:hashed,auto_select:false,itp_support:true,
+    callback:async r=>{msg.textContent='Signing in…';msg.className='unMsg';
+      try{const {data,error}=await AUTH.client.auth.signInWithIdToken({provider:'google',token:r.credential,nonce:raw});
+        if(error)throw error;sh.hidden=true;const u=data&&(data.user||data.session&&data.session.user);if(u)setUser(u);else checkSignedIn();}
+      catch(e){msg.textContent='Sign-in didn’t work'+(e&&e.message?' ('+e.message+')':'')+'. Try again.';msg.className='unMsg bad';reportErr(e,'gsi');}}});
+  $('gBtn').innerHTML='';gid.renderButton($('gBtn'),{type:'standard',theme:'filled_black',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:Math.min(320,innerWidth-96)});}
+$('gCancel').onclick=()=>{$('gSheet').hidden=true;};
+// fallback: Supabase's Google OAuth in a popup. The game stays put. auth.html (same origin) finishes the sign-in and tells us; if the popup is
 // blocked, fall back to a full-page redirect (the round is saved and resumes after the redirect back).
-async function signIn(){if(!AUTH.client)return;
+async function oauthPopup(){if(!AUTH.client)return;
   try{localStorage.setItem('qbcam.authPopupAt',String(Date.now()));}catch(e){}
   const w=window.open('','ppauth','popup,width=500,height=650');if(w)try{w.document.write('<body style="background:#070d18;color:#e8efe9;font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0">Opening Google…</body>');}catch(e){}
   const back=location.pathname+location.search;
@@ -2173,6 +2200,7 @@ window.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&!$('vsPick').hidden){e.preventDefault();closeVs();return;}
   if(e.key==='Escape'&&!$('boardSheet').hidden){e.preventDefault();$('boardSheet').hidden=true;return;}
   if(e.key==='Escape'&&!$('meSheet').hidden){e.preventDefault();$('meSheet').hidden=true;return;}
+  if(e.key==='Escape'&&!$('gSheet').hidden){e.preventDefault();$('gSheet').hidden=true;return;}
   if(!$('firstQ').hidden){if(e.key==='Escape'){e.preventDefault();$('firstQ').hidden=true;}else if(e.key!=='Tab'&&e.key!=='Enter'&&e.key!==' ')e.stopImmediatePropagation();return;}
   if(S.tutCard&&!PZ&&e.key!=='Escape'){if(normKey(e)===KB.snap||e.key===' '||e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();if(document.activeElement===$('tutAlt'))$('tutAlt').click();else tutClose();}else if(e.key!=='Tab')e.stopImmediatePropagation();return;}
   if(e.key==='Escape'){if(PZ){e.preventDefault();e.stopImmediatePropagation();closePause();}else if(S.phase!=='idle'&&$('start').hidden){e.preventDefault();e.stopImmediatePropagation();openPause();}return;}

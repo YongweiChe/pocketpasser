@@ -10,6 +10,9 @@ export function createClient(){
     onAuthStateChange(cb){cbs.push(cb);return{data:{subscription:{unsubscribe(){}}}};},
     async signOut(){L.removeItem(K);cbs.forEach(cb=>cb('SIGNED_OUT',null));return{error:null};},
     async signInWithOAuth(){return{data:{url:'about:blank#fake-google'},error:null};},
+    async signInWithIdToken({token,nonce}){if(F.idTokenError)return{data:null,error:{message:F.idTokenError}};
+      if(!nonce)return{data:null,error:{message:'nonce missing'}};const t=JSON.parse(token);const session={user:{id:t.sub,user_metadata:{full_name:t.name}}};
+      put(K,session);cbs.forEach(cb=>cb('SIGNED_IN',session));return{data:{user:session.user,session},error:null};},
   };
   function q(t){const st={t,f:[],op:'select',row:null,lim:1e9,ord:null};
     const run=async()=>{const d=db();let rows=d[t]||[];const uid=(get(K)||{}).user?.id;
