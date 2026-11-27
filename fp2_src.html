@@ -6,7 +6,8 @@
 <title>Pocket Passer</title>
 <meta name="description" content="Think you can outread an NFL quarterback? Real NFL plays from tracking data: take the snap, make the throw, and see if you beat the pro's real decision.">
 <meta name="theme-color" content="#070d18">
-<script>/* the old Render address: send players to the real site (Google sign-in is set up for pocketpasser.io only) */
+<script>/* http -> https (sign-in needs a secure page); the old Render address -> the real site (Google sign-in is set up for pocketpasser.io only) */
+if(location.protocol==='http:'&&/(^|\.)pocketpasser\.io$/.test(location.hostname))location.replace('https://'+location.host+location.pathname+location.search+location.hash);
 if(/\.onrender\.com$/.test(location.hostname))location.replace('https://pocketpasser.io/'+location.search+location.hash);</script>
 <script defer data-domain="pocketpasser.io" src="https://plausible.io/js/script.js"></script>
 <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
@@ -1308,8 +1309,8 @@ function realToPlay(r){
     pro:{target:tgt.id,spot:r.pro.spot,type:r.pro.type,result:r.pro.result,text:r.pro.text},note:'What happened: '+r.pro.text};}
 
 
-fetch('real_plays.json').then(r=>r.json()).then(R=>{const rp=[];R.forEach(r=>{try{const p=realToPlay(r);prepPlay(p);p.prog=ZONES;rp.push(p);}catch(e){console.warn('skipped real play',r.key,e);}});
-  if(S.phase==='idle'){PLAYS.unshift(...rp);buildField(PLAYS[0]);buildActors(PLAYS[0]);}else PLAYS.push(...rp);homeStats();}).catch(e=>console.error('real plays failed to load',e));
+const REAL={done:false};REAL.ready=fetch('real_plays.json').then(r=>r.json()).then(R=>{const rp=[];R.forEach(r=>{try{const p=realToPlay(r);prepPlay(p);p.prog=ZONES;rp.push(p);}catch(e){console.warn('skipped real play',r.key,e);}});
+  if(S.phase==='idle'){PLAYS.unshift(...rp);buildField(PLAYS[0]);buildActors(PLAYS[0]);}else PLAYS.push(...rp);homeStats();}).catch(e=>console.error('real plays failed to load',e)).finally(()=>{REAL.done=true;});
 const initials=n=>String(n||'').split(/\s+/).map(w=>w[0]||'').join('').slice(0,3).toUpperCase();
 function showReveal(pl,mine,proE){const m=pl.meta,c=TEAMC[m.offT]||['#a3161f','#f5c518'];const el=$('reveal');
   el.style.setProperty('--team',c[0]);el.style.setProperty('--team2',c[1]);
@@ -1425,8 +1426,9 @@ async function pickRound(kind,arg){const req=++roundReq;await BDB.ready;if(req!=
   if(ent.some(e=>e.i==null))banner('Loading plays…');
   try{const ix=await loadEntries(ent);if(req===roundReq&&$('start').hidden)startRound(kind,arg,ix);}catch(e){console.error(e);banner('Couldn’t load the plays');}}
 function startRound(kind,arg,pre){if(!pre&&!AUTH.settled)return afterAuth(()=>startRound(kind,arg,pre));
+  if(!pre&&!REAL.done){banner('Loading plays…');REAL.ready.then(()=>{if($('start').hidden)startRound(kind,arg,pre);});return;}   // plays file still downloading (slow phones)
   if(!pre&&kind!=='tutorial'&&guestLocked()){showWall({type:'start',kind,arg:arg||null});return;}if(!pre)clearPending();if(!pre&&kind!=='tutorial'){pickRound(kind,arg);return;}
-  const plays=pre||tutPlays();
+  const plays=pre||tutPlays();if(plays.some(i=>i==null||i<0||!PLAYS[i])){banner('Couldn’t load the plays. Check your connection and reload.');return;}
   if(S.round&&S.round.kind==='tutorial'&&kind!=='tutorial'&&S.userLimit!=null){S.limit=S.userLimit;S.userLimit=null;syncDiff();}
   if(kind==='tutorial'&&S.userLimit==null)S.userLimit=S.limit;
   S.round={kind,plays,i:0,res:[],qb:kind==='versus'?arg:null};track('Round started',{mode:kind,signed_in:AUTH.user?'yes':'no'});if(kind!=='tutorial'&&AUTH.client&&!AUTH.user)store.set('guestRounds',String(+(store.get('guestRounds')||0)+1));document.body.classList.toggle('bledsoe',kind==='bledsoe');ANN.stop();S.results={};$('results').hidden=true;document.body.classList.remove('resultsOn');syncRoutes();loadPlay(plays[0]);ANN.say('round-'+kind);}
@@ -1551,7 +1553,7 @@ function loadGsi(){if(GSI)return GSI;GSI=new Promise((res,rej)=>{const ok=()=>wi
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
 async function signIn(){if(!AUTH.client)return;track('Sign-in opened',{from:PENDING?PENDING.type:'button'});const sh=$('gSheet'),msg=$('gMsg');msg.textContent='';msg.className='unMsg';
   $('gBtn').innerHTML='<p class="mute">Loading Google…</p>';sh.hidden=false;
-  let gid;try{gid=await loadGsi();}catch(e){sh.hidden=true;return oauthPopup();}
+  let gid;try{if(!(window.crypto&&crypto.subtle))throw new Error('no crypto.subtle');gid=await loadGsi();}catch(e){sh.hidden=true;return oauthPopup();}
   const raw=hex(crypto.getRandomValues(new Uint8Array(16))),hashed=hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)));
   gid.initialize({client_id:GOOGLE_CLIENT_ID,nonce:hashed,auto_select:false,itp_support:true,
     callback:async r=>{msg.textContent='Signing in…';msg.className='unMsg';

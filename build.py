@@ -94,8 +94,9 @@ for v in ann_files.values(): shutil.copy(p(v), os.path.join(pub, v))
 if music: os.makedirs(os.path.join(pub, 'audio', 'music'), exist_ok=True); shutil.copy(p(music), os.path.join(pub, music))
 
 data = open(p('real_plays.json')).read()
-standalone = out_embed.replace("fetch('real_plays.json').then(r=>r.json()).then(R=>{",
-                         "const REAL_DATA=" + data + ";Promise.resolve(REAL_DATA).then(R=>{", 1)
+standalone = out_embed.replace("REAL.ready=fetch('real_plays.json').then(r=>r.json()).then(R=>{",
+                         "const REAL_DATA=" + data + ";REAL.ready=Promise.resolve(REAL_DATA).then(R=>{", 1)
+assert 'REAL_DATA=' in standalone, 'standalone: plays not inlined (the fetch line in fp2_src.html changed?)'
 open(p('beat-the-pro-qb-cam.html'), 'w').write(standalone)
 print('built fp2.html and beat-the-pro-qb-cam.html' + (f' ({len(cad)} recorded cadences)' if cad else '') + (', home music: ' + music if music else ''))
 if lines:
