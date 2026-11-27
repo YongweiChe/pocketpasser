@@ -6,6 +6,8 @@
 <title>Pocket Passer</title>
 <meta name="description" content="Think you can outread an NFL quarterback? Real NFL plays from tracking data: take the snap, make the throw, and see if you beat the pro's real decision.">
 <meta name="theme-color" content="#070d18">
+<script defer data-domain="pocketpasser.io" src="https://plausible.io/js/script.js"></script>
+<script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
 <link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Pocket Passer"><meta property="og:url" content="https://pocketpasser.io/">
 <meta property="og:title" content="Pocket Passer: think you can outread an NFL quarterback?">
@@ -657,7 +659,7 @@ function bledIntro(){const best=+(store.get('bledsoe')||0);
     ['Foxborough, Massachusetts · 2000','You are Drew Bledsoe.',['First overall pick. Franchise quarterback. The face of the New England Patriots for seven seasons.','Nobody in this town has ever asked who your backup is.'],'Next'],
     ['Drew Bledsoe mode','Hold on to your job.',['Every snap is graded against the real NFL quarterback’s decision, and it all adds up.',`Keep your running EPA above <b>${BLED_FLOOR.toFixed(1)}</b>. Drop below it and Belichick makes the call.`+(best?` Your longest run: <b>${best} snaps</b>.`:'')],'Take the field','Back']
   ],r=>{if(r==='ok')begin('bledsoe');else if(S.round)goHome();},false);}
-function bledEnd(){const R=S.round,n=R.res.filter(Boolean).length,t=bledTot(),best=+(store.get('bledsoe')||0),rec=n>best;if(rec)store.set('bledsoe',String(n));saveRound('bledsoe',t,null,n);
+function bledEnd(){const R=S.round,n=R.res.filter(Boolean).length,t=bledTot(),_t=track('Round finished',{mode:'bledsoe',snaps:String(n),signed_in:AUTH.user?'yes':'no'}),best=+(store.get('bledsoe')||0),rec=n>best;if(rec)store.set('bledsoe',String(n));saveRound('bledsoe',t,null,n);
   hideReview();$('legend').hidden=true;
   bledScene({date:'Monday, September 24, 2001',head:'Brady takes over',deck:`Belichick turns to the second-year backup after Bledsoe’s ${n}-snap run ends at ${fmt(t)} EPA.`},[
     ['Gillette Stadium · the sideline','Belichick made the call.',[`You lasted <b>${n} snaps</b> before the leash ran out.`+(rec?' A new personal record.':best?` Your record is ${best}.`:''),'Tom Brady jogged onto the field. He never gave the job back.'],'Try again','Home']
@@ -1412,7 +1414,7 @@ function startRound(kind,arg,pre){if(!pre&&!AUTH.settled)return afterAuth(()=>st
   const plays=pre||tutPlays();
   if(S.round&&S.round.kind==='tutorial'&&kind!=='tutorial'&&S.userLimit!=null){S.limit=S.userLimit;S.userLimit=null;syncDiff();}
   if(kind==='tutorial'&&S.userLimit==null)S.userLimit=S.limit;
-  S.round={kind,plays,i:0,res:[],qb:kind==='versus'?arg:null};if(kind!=='tutorial'&&AUTH.client&&!AUTH.user)store.set('guestRounds',String(+(store.get('guestRounds')||0)+1));document.body.classList.toggle('bledsoe',kind==='bledsoe');ANN.stop();S.results={};$('results').hidden=true;document.body.classList.remove('resultsOn');syncRoutes();loadPlay(plays[0]);ANN.say('round-'+kind);}
+  S.round={kind,plays,i:0,res:[],qb:kind==='versus'?arg:null};track('Round started',{mode:kind,signed_in:AUTH.user?'yes':'no'});if(kind!=='tutorial'&&AUTH.client&&!AUTH.user)store.set('guestRounds',String(+(store.get('guestRounds')||0)+1));document.body.classList.toggle('bledsoe',kind==='bledsoe');ANN.stop();S.results={};$('results').hidden=true;document.body.classList.remove('resultsOn');syncRoutes();loadPlay(plays[0]);ANN.say('round-'+kind);}
 function roundLabel(){if(S.round&&S.round.kind==='bledsoe')return 'Drew Bledsoe mode · snap '+(S.round.i+1);return S.round?({daily:"Today's 6",tutorial:'Tutorial',versus:'Vs. '+(S.round.qb||'').split(' ').pop()}[S.round.kind]||'Practice')+' · play '+(S.round.i+1)+' of '+S.round.plays.length:'';}
 
 /* ---------- routes toggle (practice + tutorial only, so the daily board stays fair) ---------- */
@@ -1460,6 +1462,8 @@ function tutApply(){if(!isTut())return;S.limit=tutGuided()?TUT[0].limit:(coarse?
 /* ======================= ACCOUNTS (Supabase: Google sign-in + Postgres) =======================
    Off until SUPA.url/key are filled in (the anon key is public by design; row-level security in supabase/schema.sql protects the data).
    Guests get GUEST_ROUNDS rounds (of 6; a Bledsoe run counts as one) outside the tutorial, then a sign-in wall before the next round. */
+// analytics events (Plausible). Names must match Goals in the Plausible dashboard to show up there.
+function track(name,props){try{window.plausible&&plausible(name,props?{props}:undefined);}catch(e){}}
 const SUPA={url:'https://nilgjuxrbqbvsckctmxc.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pbGdqdXhyYnFidnNja2N0bXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3ODk0ODEsImV4cCI6MjExMTM2NTQ4MX0.iewxdQOvKyRbKxgmK-zXqp0-NFa_Cy1wVzhumQXMn1A'},GUEST_ROUNDS=2;   // anon key: public by design (row-level security guards the tables)
 const AUTH={client:null,user:null,name:'',ready:null,settled:false};
 const unSuggest=u=>{const m=u&&u.user_metadata||{},f=((m.full_name||m.name||'').trim().split(/\s+/)[0]||'Rookie').replace(/[^A-Za-z0-9_]/g,'').slice(0,11)||'Rookie';return f.length<3?'QB_'+f:f;};
@@ -1477,7 +1481,7 @@ function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;LB.me=u?
   if(!u){AUTH.name='';AUTH.named=null;   // signed out: close the username box and release anything waiting on it
     if(!$('unSheet').hidden)$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d('');syncAcct();return;}
   if(!$('gSheet').hidden)$('gSheet').hidden=true;
-  if(u.id!==was){AUTH.name='';syncAcct();const named=AUTH.named=loadUsername(u);
+  if(u.id!==was){if(AUTH.settled)track('Signed in');AUTH.name='';syncAcct();const named=AUTH.named=loadUsername(u);
     named.then(name=>{if(!AUTH.user||AUTH.user.id!==u.id||!name)return;$('wall').hidden=true;runPending();});}}
 // the one step waiting on a sign-in: {type:'start',kind,arg} (the round the wall stopped) or {type:'claim',tot,wins,day}
 // (put a finished Today's 6 on the board). In memory for the popup; in sessionStorage across a full-page redirect.
@@ -1511,7 +1515,7 @@ function unCheck(){const v=$('unIn').value.trim(),m=$('unMsg'),go=$('unGo');clea
 async function unSave(){const v=$('unIn').value.trim(),go=$('unGo');go.disabled=true;$('unMsg').textContent='Saving…';
   const {error}=await AUTH.client.from('profiles').upsert({id:AUTH.user.id,username:v});
   if(error){$('unMsg').textContent=error.code==='23505'?'Just got taken. Try another.':'Couldn’t save. Try again.';$('unMsg').className='unMsg bad';go.disabled=error.code==='23505';return;}
-  AUTH.name=v;syncAcct();if(!$('meSheet').hidden)$('meH').textContent=v;$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d(v);}
+  if(!AUTH.name)track('Username picked');AUTH.name=v;syncAcct();if(!$('meSheet').hidden)$('meH').textContent=v;$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d(v);}
 // skipping keeps an auto-made name like Rookie_4821 (changeable later from the player page)
 async function unSkip(){let v='';for(let i=0;i<10&&!v;i++){const c='Rookie_'+Math.floor(1000+Math.random()*9000);if(await unFree(c))v=c;}
   if(v){$('unIn').value=v;await unSave();}}
@@ -1529,7 +1533,7 @@ function loadGsi(){if(GSI)return GSI;GSI=new Promise((res,rej)=>{const ok=()=>wi
     const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.async=true;sc.onload=()=>ok()?res(google.accounts.id):rej(new Error('gsi missing'));
     sc.onerror=()=>rej(new Error('gsi blocked'));document.head.appendChild(sc);setTimeout(()=>rej(new Error('gsi timeout')),8000);});GSI.catch(()=>{GSI=null;});return GSI;}
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
-async function signIn(){if(!AUTH.client)return;const sh=$('gSheet'),msg=$('gMsg');msg.textContent='';msg.className='unMsg';
+async function signIn(){if(!AUTH.client)return;track('Sign-in opened',{from:PENDING?PENDING.type:'button'});const sh=$('gSheet'),msg=$('gMsg');msg.textContent='';msg.className='unMsg';
   $('gBtn').innerHTML='<p class="mute">Loading Google…</p>';sh.hidden=false;
   let gid;try{gid=await loadGsi();}catch(e){sh.hidden=true;return oauthPopup();}
   const raw=hex(crypto.getRandomValues(new Uint8Array(16))),hashed=hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)));
@@ -1551,7 +1555,7 @@ async function oauthPopup(){if(!AUTH.client)return;
   if(w&&!w.closed)w.location.href=data.url;else{try{localStorage.removeItem('qbcam.authPopupAt');if(PENDING)sessionStorage.setItem('qbcam.pending',JSON.stringify(PENDING));}catch(e){}location.href=data.url;}}
 window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.pp==='auth')checkSignedIn();});
 const guestLocked=()=>!!AUTH.client&&!AUTH.user&&+(store.get('guestRounds')||0)>=GUEST_ROUNDS;
-function showWall(p){setPending(p);$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
+function showWall(p){setPending(p);track('Sign-in wall');$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
 $('wallGo').onclick=()=>signIn();$('wallHome').onclick=()=>{$('wall').hidden=true;clearPending();goHome();};
 $('acctBtn').onclick=()=>{if(!AUTH.client)return;if(AUTH.user)openMe();else signIn();};
 $('meOut').onclick=async()=>{$('meSheet').hidden=true;await AUTH.client.auth.signOut();setUser(null);};
@@ -1747,6 +1751,7 @@ function anTend(res,W){const n=res.length,c=f=>res.filter(f).length,inB=(a,l,h)=
     `<div class="tRow"><span>${lab}${sub?`<small>${sub}</small>`:''}</span><div class="tBars">${bar('you','You',c(fy))}${bar('pro',W,c(fp))}</div></div>`).join('')+
     `<p class="mute anHint" style="margin:2px 0 0">Out of ${n} snaps. Completions and interceptions for you are the model’s roll; for ${esc(W)}, what really happened.</p>`;}
 async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.length,tot=res.reduce((a,r)=>a+r.diff,0),wins=res.filter(r=>r.diff>=0).length,
+    _t=R.archive||track('Round finished',{mode:R.kind,rank:tierOf(tot/Math.max(1,n))[1],signed_in:AUTH.user?'yes':'no'}),
     isDaily=R.kind==='daily',isTut=R.kind==='tutorial',isVs=R.kind==='versus',W=isVs?R.qb.split(' ').pop():'the pro',A=R.archive;
   const firstToday=isDaily&&!A&&(store.get('dailyDone')||'').split('|')[0]!==dayKey();
   if(isDaily&&!A&&(store.get('dailyDone')||'').split('|')[0]!==dayKey())store.set('dailyDone',dayKey()+'|'+tot.toFixed(2));
@@ -1775,7 +1780,7 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   if(isDaily&&AUTH.user&&!done)postDaily(tot,wins,true);
   else if(isDaily&&AUTH.client&&!AUTH.user&&!firstToday)$('rsNote').textContent='Only your first run of today’s 6 can go on the board.';
   else if(isDaily&&AUTH.client&&!AUTH.user){$('rsNote').innerHTML='Sign in to put this score on today’s board. <button class="go" id="rsClaim">Sign in to claim your spot</button>';
-    $('rsClaim').onclick=()=>{setPending({type:'claim',tot,wins,day:dayKeyISO()});signIn();};}
+    $('rsClaim').onclick=()=>{track('Claim spot');setPending({type:'claim',tot,wins,day:dayKeyISO()});signIn();};}
   else if(isDaily&&LB.db&&!done&&LB.canWrite!==false){$('rsForm').hidden=false;$('rsIni').value=store.get('ini')||'';setTimeout(()=>$('rsIni').focus(),50);
     $('rsForm').onsubmit=async e=>{e.preventDefault();const ini=($('rsIni').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);if(ini.length<1){$('rsNote').textContent='Enter up to 3 letters.';return;}
       store.set('ini',ini);$('rsSubmit').disabled=true;$('rsNote').textContent='Posting…';const r=await submitScore(ini,tot,wins);
