@@ -1356,7 +1356,7 @@ function showNext(){if(tutGuided()||S.phase!=='done'||!S.round)return;const last
   if(S.round.kind==='bledsoe'&&S.round.over){$('nextHint').innerHTML=(coarse?'Tap':'Press <kbd>'+kn('snap')+'</kbd>')+'. Coach wants a word.';$('nextHint').hidden=false;return;}
   $('nextHint').innerHTML=(coarse?'Tap':'Press <kbd>'+kn('snap')+'</kbd>')+(last?' to see your results':' for the next play');$('nextHint').hidden=false;}
 const hideNext=()=>{$('nextHint').hidden=true;};
-function holdHere(){S.advanceAt=0;$('snap').textContent='Next play'+kp('snap');$('snap').disabled=false;}
+function holdHere(){S.advanceAt=0;const last=S.round&&S.round.kind!=='bledsoe'&&S.round.i>=S.round.plays.length-1;$('snap').textContent=(last?'See results':'Next play')+kp('snap');$('snap').disabled=false;}
 function replay(which){const pl=play();if(S.phase!=='done')return;const M=S.mine;if(which==='mine'&&(!M||M.sack||M.away))return;
   holdHere();hideNext();clearTimeout(S.revealTO);hideReview();$('reveal').hidden=true;$('res').hidden=true;
   const P=which==='pro'?makePlan(pl.pro.spot,pl.pro.type,pl.pro.result):makePlan(M.spot,M.type,{kind:M.kind,yac:M.yac},M.ev.T);
