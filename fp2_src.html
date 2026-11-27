@@ -320,7 +320,10 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .meForm h3,.meBests h3{margin:14px 0 6px;font:600 13px "Retro",system-ui,sans-serif;color:var(--mute);letter-spacing:.04em}
 .meForm svg{display:block;width:100%;height:auto}.meForm rect{shape-rendering:crispEdges}.meForm rect:hover{opacity:.75}
 .meBests ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}.meBests li{display:flex;justify-content:space-between;gap:12px;padding:7px 10px;background:rgba(255,255,255,.035)}.meBests li b{font-family:"Retro",system-ui,sans-serif;font-size:15px}
-.meEmpty{margin:18px 0;color:var(--mute)}.meBtns{justify-content:space-between}
+.meEmpty{margin:18px 0;color:var(--mute)}
+.unForm input{width:100%;box-sizing:border-box;margin-top:6px;padding:10px 12px;font:600 20px "Retro",system-ui,sans-serif;background:#070d18;color:var(--ink);border:2px solid var(--line)}
+.unMsg{min-height:1.4em;margin:6px 0 0;font-size:14px;color:var(--mute)}.unMsg.good{color:#4ade80}.unMsg.bad{color:#ff6b6b}
+.unEdit{margin-top:4px;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--mute);font:14px "RetroText",system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.unEdit:hover{color:var(--gold)}.meBtns{justify-content:space-between}
 @media (max-width:440px){.hmTop .acct .nm{display:none}.hmTop .acct{padding:0 7px}.hmTop .acct:not(:has(i)){padding:0 12px}}
 @media (max-width:560px){.meTiles{grid-template-columns:1fr 1fr}.meTile b{font-size:20px}}.hbBox{max-width:520px}.hbList{overflow:auto;max-height:min(56vh,520px)}.hbList .lb{margin:0}
 #vsQ{font:500 16px "RetroText",system-ui,sans-serif;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#0a1120;color:var(--ink);width:100%}
@@ -560,8 +563,13 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
         <small>First time here?</small><h2 id="fqH">Want a quick tutorial?</h2><p class="mute">Three real plays, about two minutes. It shows you how a snap works before your first real round.</p>
         <div class="fqBtns"><button class="go" id="fqYes">Yes, show me</button><button class="ghost" id="fqNo">No, just play</button></div>
       </div></div>
+      <div class="vsSheet" id="unSheet" hidden role="dialog" aria-modal="true" aria-labelledby="unH" style="z-index:30"><div class="vsBox fqBox">
+        <small>Your account</small><h2 id="unH">Pick a username</h2><p class="mute" id="unP"></p>
+        <form id="unForm" class="unForm"><input id="unIn" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Username"><p id="unMsg" class="unMsg" aria-live="polite"></p>
+        <div class="fqBtns"><button class="go" id="unGo" type="submit">Save</button><button class="ghost" id="unSkip" type="button">Skip for now</button><button class="ghost" id="unCancel" type="button" hidden>Cancel</button></div></form>
+      </div></div>
       <div class="vsSheet" id="meSheet" hidden role="dialog" aria-modal="true" aria-labelledby="meH"><div class="vsBox meBox">
-        <header class="vsHead"><div><small id="meSince">Your career</small><h2 id="meH">Player</h2><p class="meRank" id="meRank"></p></div><button id="meClose" aria-label="Close">✕</button></header>
+        <header class="vsHead"><div><small id="meSince">Your career</small><h2 id="meH">Player</h2><button class="unEdit" id="meRename">Change username</button><p class="meRank" id="meRank"></p></div><button id="meClose" aria-label="Close">✕</button></header>
         <div id="meBody"></div>
         <div class="fqBtns meBtns"><button class="go" id="mePlay">Play today’s 6</button><button class="ghost" id="meOut">Sign out</button></div>
       </div></div>
@@ -1440,17 +1448,44 @@ function tutApply(){if(!isTut())return;S.limit=tutGuided()?TUT[0].limit:(coarse?
    Guests get GUEST_SNAPS snaps outside the tutorial, then a sign-in wall; after the Google redirect the round resumes. */
 const SUPA={url:'https://nilgjuxrbqbvsckctmxc.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pbGdqdXhyYnFidnNja2N0bXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3ODk0ODEsImV4cCI6MjExMTM2NTQ4MX0.iewxdQOvKyRbKxgmK-zXqp0-NFa_Cy1wVzhumQXMn1A'},GUEST_SNAPS=2;   // anon key: public by design (row-level security guards the tables)
 const AUTH={client:null,user:null,name:'',ready:null};
-const authName=u=>{const m=u&&u.user_metadata||{},full=(m.full_name||m.name||'').trim().split(/\s+/);return full[0]?full[0]+(full.length>1?' '+full[full.length-1][0]+'.':''):'Player';};
+const unSuggest=u=>{const m=u&&u.user_metadata||{},f=((m.full_name||m.name||'').trim().split(/\s+/)[0]||'Rookie').replace(/[^A-Za-z0-9_]/g,'').slice(0,11)||'Rookie';return f.length<3?'QB_'+f:f;};
 AUTH.ready=(async()=>{if(!SUPA.url||!SUPA.key)return;
   try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm');
     AUTH.client=createClient(SUPA.url,SUPA.key,{auth:{persistSession:true,detectSessionInUrl:true,flowType:'pkce'}});
     const {data}=await AUTH.client.auth.getSession();setUser(data.session&&data.session.user);
     AUTH.client.auth.onAuthStateChange((_e,sess)=>setUser(sess&&sess.user));}catch(e){console.error('accounts unavailable',e);AUTH.client=null;}
   syncAcct();})();
-function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;AUTH.name=u?authName(u):'';LB.me=u?u.id:null;LB.canWrite=!!u;syncAcct();
-  if(u&&u.id!==was){AUTH.client.from('profiles').upsert({id:u.id,display_name:AUTH.name}).then(()=>{},()=>{});resumeAfterSignIn();}}
+// usernames: unique (case-insensitive, 3-16 letters/digits/_), picked after the first sign-in; the board shows only these.
+// AUTH.named resolves once the player has a username (at once if they already do), so play resumes after picking one.
+function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;LB.me=u?u.id:null;LB.canWrite=!!u;
+  if(!u){AUTH.name='';AUTH.named=null;syncAcct();return;}
+  if(u.id!==was){AUTH.name='';syncAcct();AUTH.named=loadUsername(u);AUTH.named.then(()=>resumeAfterSignIn());}}
+async function loadUsername(u){let name=null;try{const {data}=await AUTH.client.from('profiles').select('username').eq('id',u.id).maybeSingle();name=data&&data.username;}catch(e){}
+  if(!name)name=await pickUsername(u,true);AUTH.name=name||'';syncAcct();return AUTH.name;}
+let UN_DONE=null;
+async function unFree(n){if(!/^[A-Za-z0-9_]{3,16}$/.test(n))return false;try{const {data,error}=await AUTH.client.rpc('username_available',{name:n});return !error&&!!data;}catch(e){return false;}}
+async function pickUsername(u,first){const sh=$('unSheet'),inp=$('unIn');$('unH').textContent=first?'Pick a username':'Change your username';
+  $('unP').textContent=first?'This is the name on the leaderboard. Your Google name stays private.':'Your past leaderboard entries update too.';
+  $('unSkip').hidden=!first;$('unCancel').hidden=first;let v=first?unSuggest(u):AUTH.name;if(first&&!(await unFree(v)))for(let i=0;i<8;i++){const c=v.slice(0,13)+Math.floor(10+Math.random()*990);if(await unFree(c)){v=c;break;}}
+  inp.value=v;sh.hidden=false;unCheck();setTimeout(()=>{inp.focus({preventScroll:true});inp.select();},30);return new Promise(res=>{UN_DONE=res;});}
+let unT=0,unSeq=0;
+function unCheck(){const v=$('unIn').value.trim(),m=$('unMsg'),go=$('unGo');clearTimeout(unT);const seq=++unSeq;
+  if(!/^[A-Za-z0-9_]*$/.test(v)){m.textContent='Letters, numbers and _ only.';m.className='unMsg bad';go.disabled=true;return;}
+  if(v.length<3||v.length>16){m.textContent='3 to 16 characters.';m.className='unMsg';go.disabled=true;return;}
+  if(v===AUTH.name){m.textContent='That’s your current name.';m.className='unMsg';go.disabled=true;return;}
+  m.textContent='Checking…';m.className='unMsg';go.disabled=true;
+  unT=setTimeout(async()=>{const ok=await unFree(v);if(seq!==unSeq)return;m.textContent=ok?'✓ Available':'Taken. Try another.';m.className='unMsg '+(ok?'good':'bad');go.disabled=!ok;},300);}
+async function unSave(){const v=$('unIn').value.trim(),go=$('unGo');go.disabled=true;$('unMsg').textContent='Saving…';
+  const {error}=await AUTH.client.from('profiles').upsert({id:AUTH.user.id,username:v});
+  if(error){$('unMsg').textContent=error.code==='23505'?'Just got taken. Try another.':'Couldn’t save. Try again.';$('unMsg').className='unMsg bad';go.disabled=error.code==='23505';return;}
+  AUTH.name=v;syncAcct();if(!$('meSheet').hidden)$('meH').textContent=v;$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d(v);}
+// skipping keeps an auto-made name like Rookie_4821 (changeable later from the player page)
+async function unSkip(){let v='';for(let i=0;i<10&&!v;i++){const c='Rookie_'+Math.floor(1000+Math.random()*9000);if(await unFree(c))v=c;}
+  if(v){$('unIn').value=v;await unSave();}}
+$('unIn').oninput=unCheck;$('unForm').onsubmit=e=>{e.preventDefault();if(!$('unGo').disabled)unSave();};$('unSkip').onclick=unSkip;
+$('unCancel').onclick=()=>{if(!AUTH.name)return unSkip();$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d(AUTH.name);};
 function syncAcct(){const b=$('acctBtn');if(!b)return;b.hidden=!AUTH.client;
-  if(AUTH.user)b.innerHTML='<i>'+esc((AUTH.name||'?')[0].toUpperCase())+'</i><span class="nm">'+esc(AUTH.name)+'</span>';else b.textContent='Sign in';
+  if(AUTH.user)b.innerHTML=AUTH.name?'<i>'+esc(AUTH.name[0].toUpperCase())+'</i><span class="nm">'+esc(AUTH.name)+'</span>':'<span>Account</span>';else b.textContent='Sign in';
   b.title=AUTH.user?'Your stats':'Sign in with Google to save your scores';}
 // Google sign-in in a popup: the game stays put. auth.html (same origin) finishes the sign-in and tells us; if the popup is
 // blocked, fall back to a full-page redirect (the round is saved and resumes after the redirect back).
@@ -1462,7 +1497,7 @@ async function signIn(){if(!AUTH.client)return;
   if(w&&!w.closed)w.location.href=data.url;else{saveResume();location.href=data.url;}}
 window.addEventListener('message',async e=>{if(e.origin!==location.origin||!e.data||e.data.pp!=='auth'||!AUTH.client)return;
   const {data}=await AUTH.client.auth.getSession();const u=data.session&&data.session.user;if(!u)return;
-  sessionStorage.removeItem('qbcam.resume');setUser(u);if(!$('wall').hidden){$('wall').hidden=true;const c=WALL_CONT;WALL_CONT=null;if(c)c();}});
+  sessionStorage.removeItem('qbcam.resume');setUser(u);if(!$('wall').hidden){$('wall').hidden=true;const c=WALL_CONT;WALL_CONT=null;if(AUTH.named)await AUTH.named;if(c)c();}});
 const guestLocked=()=>!!AUTH.client&&!AUTH.user&&+(store.get('guestSnaps')||0)>=GUEST_SNAPS;
 let WALL_CONT=null;   // what the wall interrupted: run it once the player has signed in (popup flow)
 function showWall(cont){WALL_CONT=cont||null;$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}
@@ -1476,10 +1511,10 @@ async function resumeAfterSignIn(){let r;try{r=JSON.parse(sessionStorage.getItem
 $('wallGo').onclick=()=>signIn();$('wallHome').onclick=()=>{$('wall').hidden=true;goHome();};
 $('acctBtn').onclick=()=>{if(!AUTH.client)return;if(AUTH.user)openMe();else signIn();};
 $('meOut').onclick=async()=>{$('meSheet').hidden=true;await AUTH.client.auth.signOut();setUser(null);};
-$('meClose').onclick=()=>{$('meSheet').hidden=true;};$('mePlay').onclick=()=>{$('meSheet').hidden=true;$('go').click();};
+$('meClose').onclick=()=>{$('meSheet').hidden=true;};$('meRename').onclick=()=>pickUsername(AUTH.user,false);$('mePlay').onclick=()=>{$('meSheet').hidden=true;$('go').click();};
 // player page: career numbers from your own saved snaps and rounds (row-level security: only yours are readable)
 async function openMe(){if(!AUTH.user)return;const sh=$('meSheet'),body=$('meBody');sh.hidden=false;
-  $('meH').textContent=AUTH.name;$('meRank').textContent='';$('meRank').className='meRank';$('meSince').textContent='Your career';
+  $('meH').textContent=AUTH.name||'Player';$('meRank').textContent='';$('meRank').className='meRank';$('meSince').textContent='Your career';
   $('mePlay').hidden=(store.get('dailyDone')||'').split('|')[0]===dayKey();body.innerHTML='<p class="mute">Loading your stats…</p>';
   let snaps,rounds;try{const [a,b]=await Promise.all([
       withTimeout(AUTH.client.from('snaps').select('diff,created_at').order('created_at',{ascending:false}).limit(5000),10000),
@@ -1659,7 +1694,7 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   $('rsBoard').innerHTML='<p class="mute">Loading today’s leaderboard…</p>';$('rsRank').innerHTML='';$('rsForm').hidden=true;$('rsNote').textContent='';
   if(isTut||isVs)return;
   const done=store.get('daily')===dayKey();
-  if(isDaily&&AUTH.user&&!done){$('rsNote').textContent='Posting to today’s board…';const r=await submitScore(AUTH.name,tot,wins);
+  if(isDaily&&AUTH.user&&!done){$('rsNote').textContent='Posting to today’s board…';if(AUTH.named)await AUTH.named;const r=await submitScore(AUTH.name,tot,wins);
     if(r.ok||r.why==='already'){store.set('daily',dayKey());$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
     else $('rsNote').textContent='Couldn’t reach the leaderboard.';}
   else if(isDaily&&AUTH.client&&!AUTH.user)$('rsNote').textContent='Sign in to post your score.';
