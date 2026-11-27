@@ -118,7 +118,7 @@ body.home #game>.hud:not(#start){visibility:hidden}
 .hmAlt button:hover{color:var(--gold)}
 .fqBox{max-width:440px}.fqBox h2{margin:4px 0 8px}.fqBtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 .hmSet{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center}
-.hmSet .lbl{margin:0}.artRow{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.hmSet .lbl{margin:0}.hmPriv{color:var(--mute);font-size:13px;margin-left:4px}.hmPriv:hover{color:var(--gold)}.artRow{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 #soundPick,#annPick{min-height:32px;font-size:13px;padding:0 10px}
 .hmKeys{display:flex;gap:8px 18px;flex-wrap:wrap;color:var(--mute);font-size:12px}
 kbd{font:600 12px "RetroText",system-ui,sans-serif;display:inline-block;min-width:20px;padding:1px 6px;margin-right:3px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;color:var(--ink);text-align:center}
@@ -575,7 +575,7 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
         <nav class="hmModes" aria-label="Game modes">
           <button class="cta" id="go"><span class="ctaMain">Play today’s 6 snaps</span><span class="ctaMeta"><span id="today"></span> · <span id="hmDaily">Not played yet</span></span></button>
           <p class="hmAlt"><button id="goPractice">Practice</button><button id="goVs">Versus a real QB</button><button id="tutBtn">Tutorial</button><button id="goBled">Drew Bledsoe mode</button><button id="goBoard" hidden>Leaderboard</button></p>
-          <div class="hmSet"><button id="soundPick" aria-pressed="true">Sound: on</button><button id="annPick" aria-pressed="true">Announcer: on</button><button id="keysPick">Controls</button></div>
+          <div class="hmSet"><button id="soundPick" aria-pressed="true">Sound: on</button><button id="annPick" aria-pressed="true">Announcer: on</button><button id="keysPick">Controls</button><a class="hmPriv" href="privacy">Privacy</a></div>
         </nav>
       </div>
       <div class="vsSheet" id="firstQ" hidden role="dialog" aria-modal="true" aria-labelledby="fqH"><div class="vsBox fqBox">
