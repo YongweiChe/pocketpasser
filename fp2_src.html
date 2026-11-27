@@ -1728,18 +1728,21 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   $('rsLbH').textContent=A?'Leaderboard · '+dayLabelOf(A.day):'Today’s leaderboard';
   if(isTut||isVs)return;
   if(A){$('rsNote').textContent=A.ranked?'This was your ranked run that day.':'';try{renderBoard(await loadBoard(A.day),tot,true);}catch(e){$('rsBoard').innerHTML='<p class="mute">Couldn’t reach the leaderboard right now.</p>';}return;}
-  const done=store.get('daily')===dayKey();
+  // "already posted today" is remembered per account (it was per device: signing out and back in, or a second person on
+  // the same phone, silently skipped posting); the server has the final say either way
+  const pk=()=>AUTH.client?(AUTH.user?'daily.'+AUTH.user.id:null):'daily',posted=()=>{const k=pk();return !!k&&store.get(k)===dayKey();},markPosted=()=>{const k=pk();if(k)store.set(k,dayKey());};
+  const done=posted();
   if(isDaily&&AUTH.user&&!done){$('rsNote').textContent='Posting to today’s board…';if(AUTH.named)await AUTH.named;const r=await submitScore(AUTH.name,tot,wins);
-    if(r.ok||r.why==='already'){store.set('daily',dayKey());$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
+    if(r.ok||r.why==='already'){markPosted();$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
     else $('rsNote').textContent='Couldn’t reach the leaderboard.';}
   else if(isDaily&&AUTH.client&&!AUTH.user&&!done){$('rsNote').innerHTML='Sign in to put this score on today’s board. <button class="go" id="rsClaim">Sign in to claim your spot</button>';
-    $('rsClaim').onclick=()=>{WALL_CONT=async()=>{if(store.get('daily')===dayKey())return;$('rsNote').textContent='Posting to today’s board…';const r=await submitScore(AUTH.name,tot,wins);
-        if(r.ok||r.why==='already'){store.set('daily',dayKey());$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
+    $('rsClaim').onclick=()=>{WALL_CONT=async()=>{$('rsNote').textContent='Posting to today’s board…';const r=await submitScore(AUTH.name,tot,wins);
+        if(r.ok||r.why==='already'){markPosted();$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
         else $('rsNote').textContent='Couldn’t reach the leaderboard. Try again later.';try{renderBoard(await loadBoard(),tot,true);}catch(e){}};signIn();};}
   else if(isDaily&&LB.db&&!done&&LB.canWrite!==false){$('rsForm').hidden=false;$('rsIni').value=store.get('ini')||'';setTimeout(()=>$('rsIni').focus(),50);
     $('rsForm').onsubmit=async e=>{e.preventDefault();const ini=($('rsIni').value||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);if(ini.length<1){$('rsNote').textContent='Enter up to 3 letters.';return;}
       store.set('ini',ini);$('rsSubmit').disabled=true;$('rsNote').textContent='Posting…';const r=await submitScore(ini,tot,wins);
-      if(r.ok||r.why==='already'){store.set('daily',dayKey());$('rsForm').hidden=true;$('rsNote').textContent=r.ok?'Posted to today’s board.':'You already posted today’s score ('+fmt(r.score)+'). Only your first run counts.';}
+      if(r.ok||r.why==='already'){markPosted();$('rsForm').hidden=true;$('rsNote').textContent=r.ok?'Posted to today’s board.':'You already posted today’s score ('+fmt(r.score)+'). Only your first run counts.';}
       else if(r.why==='readonly'){$('rsForm').hidden=true;$('rsNote').textContent='You can view this board, but only people in the page owner’s organization can post scores.';}
       else{$('rsSubmit').disabled=false;$('rsNote').textContent='Couldn’t reach the leaderboard. Try again.';return;}
       try{renderBoard(await loadBoard(),tot,true);}catch(e){}};}
