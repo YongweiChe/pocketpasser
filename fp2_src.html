@@ -1527,12 +1527,13 @@ function unCheck(){const v=$('unIn').value.trim(),m=$('unMsg'),go=$('unGo');clea
   if(v===AUTH.name){m.textContent='That’s your current name.';m.className='unMsg';go.disabled=true;return;}
   m.textContent='Checking…';m.className='unMsg';go.disabled=true;
   unT=setTimeout(async()=>{const ok=await unFree(v);if(seq!==unSeq)return;m.textContent=ok?'✓ Available':'Taken. Try another.';m.className='unMsg '+(ok?'good':'bad');go.disabled=!ok;},300);}
-async function unSave(){const v=$('unIn').value.trim(),go=$('unGo');go.disabled=true;$('unMsg').textContent='Saving…';
+async function unSave(){if(!AUTH.user||!AUTH.client){$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d('');return;}   // signed out meanwhile
+  const v=$('unIn').value.trim(),go=$('unGo');go.disabled=true;$('unMsg').textContent='Saving…';
   const {error}=await AUTH.client.from('profiles').upsert({id:AUTH.user.id,username:v});
   if(error){$('unMsg').textContent=error.code==='23505'?'Just got taken. Try another.':'Couldn’t save. Try again.';$('unMsg').className='unMsg bad';go.disabled=error.code==='23505';return;}
   if(!AUTH.name)track('Username picked');AUTH.name=v;syncAcct();if(!$('meSheet').hidden)$('meH').textContent=v;$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d(v);}
 // skipping keeps an auto-made name like Rookie_4821 (changeable later from the player page)
-async function unSkip(){let v='';for(let i=0;i<10&&!v;i++){const c='Rookie_'+Math.floor(1000+Math.random()*9000);if(await unFree(c))v=c;}
+async function unSkip(){if(!AUTH.user)return unSave();let v='';for(let i=0;i<10&&!v;i++){const c='Rookie_'+Math.floor(1000+Math.random()*9000);if(await unFree(c))v=c;}
   if(v){$('unIn').value=v;await unSave();}}
 $('unIn').oninput=unCheck;$('unForm').onsubmit=e=>{e.preventDefault();if(!$('unGo').disabled)unSave();};$('unSkip').onclick=unSkip;
 $('unCancel').onclick=()=>{if(!AUTH.name)return unSkip();$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d(AUTH.name);};
