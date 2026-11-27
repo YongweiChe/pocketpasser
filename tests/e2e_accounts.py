@@ -1,6 +1,6 @@
 """Account state machine: sign-in, the 2-round guest wall, claiming a Today's 6 spot, usernames, sign-out, retries.
 Uses a fake Supabase (tests/fake_supabase.js served in place of supabase-js) so timing, sessions and failures are controlled.
-Run with the local server on :8000:  python3 tests/e2e_accounts.py   (expects 15/15 passed)"""
+Run with the local server on :8000:  python3 tests/e2e_accounts.py   (expects 16/16 passed)"""
 import os
 from playwright.sync_api import sync_playwright
 GSI_FAKE="""window.google={accounts:{id:{initialize(o){window.__gsi=o;},renderButton(el){const b=document.createElement('button');b.id='fakeGoogle';b.textContent='Continue with Google';
@@ -74,7 +74,7 @@ with sync_playwright() as p:
     pg.evaluate("localStorage.setItem('sb-fake-auth-token',JSON.stringify({user:{id:'u1',user_metadata:{full_name:'T'}}}))");pg.goto(URL)
     ok=wait(pg,"!document.getElementById('boardSheet').hidden&&/Posted to today/.test(document.getElementById('hbNote').textContent)",10000)
     rounds=pg.evaluate("JSON.parse(localStorage.getItem('fake.db')).rounds.length")
-    check('7 claim with popup blocked: redirect, then posted and board shown; no duplicate round saved',pend and ok and rounds==0,(pend,pg.inner_text('#hbNote') if pg.is_visible('#hbNote') else None,rounds));ctx.close()
+    check('7 claim with popup blocked: redirect, then posted and board shown; the guest round saved once',pend and ok and rounds==1,(pend,pg.inner_text('#hbNote') if pg.is_visible('#hbNote') else None,rounds));ctx.close()
 
     # 8. sign out while the username box is open: box closes, nothing hangs
     ctx,pg=fresh("localStorage.setItem('sb-fake-auth-token',JSON.stringify({user:{id:'u3',user_metadata:{full_name:'No Name'}}}));")
@@ -125,5 +125,14 @@ with sync_playwright() as p:
     ctx,pg=fresh("window.__fake={idTokenError:'Bad ID token'};")
     pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#acctBtn');wait(pg,"!!document.getElementById('fakeGoogle')");pg.click('#fakeGoogle');pg.wait_for_timeout(800)
     check('15 token rejected: message, box stays, signed out',pg.is_visible('#gSheet') and 'work' in pg.inner_text('#gMsg') and pg.evaluate('!__AUTH.user'),pg.inner_text('#gMsg'));ctx.close()
+    # 16. guest plays Today's 6 (and a practice round), then signs up to claim: the account gets both rounds and all 12 snaps
+    ctx,pg=fresh()
+    pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#goPractice');wait(pg,"!!__S.round");pg.evaluate(FIN);pg.wait_for_timeout(800);pg.click('#rsHome');pg.wait_for_timeout(500)
+    pg.click('#go');wait(pg,"__S.round&&__S.round.kind==='daily'&&__S.phase!=='results'");pg.evaluate(FIN);wait(pg,"!!document.getElementById('rsClaim')");pg.click('#rsClaim')
+    wait(pg,"!!document.getElementById('fakeGoogle')");pg.evaluate("window.__nextSub='u8';window.__nextName='Pretty Smart'");pg.click('#fakeGoogle')
+    wait(pg,"!document.getElementById('unSheet').hidden");pg.fill('#unIn','prettyandsmart');wait(pg,"!document.getElementById('unGo').disabled");pg.click('#unGo')
+    wait(pg,"/Posted to today/.test(document.getElementById('rsNote').textContent)",10000);pg.wait_for_timeout(500)
+    db=pg.evaluate("(()=>{const d=JSON.parse(localStorage.getItem('fake.db'));return{snaps:d.snaps.filter(r=>r.user_id==='u8').length,rounds:d.rounds.filter(r=>r.user_id==='u8').map(r=>r.kind),board:d.daily_scores.length,left:localStorage.getItem('qbcam.guestHist')}})()")
+    check('16 guest rounds join the new account: 12 snaps, practice + daily rounds',db['snaps']==12 and sorted(db['rounds'])==['daily','practice'] and db['board']==1 and not db['left'],db);ctx.close()
     b.close()
 print(f"\n{sum(r for _,r in res)}/{len(res)} passed")

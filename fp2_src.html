@@ -674,7 +674,7 @@ function bledIntro(){const best=+(store.get('bledsoe')||0);
     ['Foxborough, Massachusetts · 2000','You are Drew Bledsoe.',['First overall pick. Franchise quarterback. The face of the New England Patriots for seven seasons.','Nobody in this town has ever asked who your backup is.'],'Next'],
     ['Drew Bledsoe mode','Hold on to your job.',['Every snap is graded against the real NFL quarterback’s decision, and it all adds up.',`Keep your running EPA above <b>${BLED_FLOOR.toFixed(1)}</b>. Drop below it and Belichick makes the call.`+(best?` Your longest run: <b>${best} snaps</b>.`:'')],'Take the field','Back']
   ],r=>{if(r==='ok')begin('bledsoe');else if(S.round)goHome();},false);}
-function bledEnd(){const R=S.round,n=R.res.filter(Boolean).length,t=bledTot(),_t=track('Round finished',{mode:'bledsoe',snaps:String(n),signed_in:AUTH.user?'yes':'no'}),best=+(store.get('bledsoe')||0),rec=n>best;if(rec)store.set('bledsoe',String(n));saveRound('bledsoe',t,null,n);
+function bledEnd(){const R=S.round,n=R.res.filter(Boolean).length,t=bledTot(),_t=track('Round finished',{mode:'bledsoe',snaps:String(n),signed_in:AUTH.user?'yes':'no'}),best=+(store.get('bledsoe')||0),rec=n>best;if(rec)store.set('bledsoe',String(n));saveRound('bledsoe',t,null,n,null,R.res);
   hideReview();$('legend').hidden=true;
   bledScene({date:'Monday, September 24, 2001',head:'Brady takes over',deck:`Belichick turns to the second-year backup after Bledsoe’s ${n}-snap run ends at ${fmt(t)} EPA.`},[
     ['Gillette Stadium · the sideline','Belichick made the call.',[`You lasted <b>${n} snaps</b> before the leash ran out.`+(rec?' A new personal record.':best?` Your record is ${best}.`:''),'Tom Brady jogged onto the field. He never gave the job back.'],'Try again','Home']
@@ -1497,7 +1497,7 @@ function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;LB.me=u?
     if(!$('unSheet').hidden)$('unSheet').hidden=true;const d=UN_DONE;UN_DONE=null;if(d)d('');syncAcct();return;}
   if(!$('gSheet').hidden)$('gSheet').hidden=true;
   if(u.id!==was){if(AUTH.settled)track('Signed in');AUTH.name='';syncAcct();const named=AUTH.named=loadUsername(u);
-    named.then(name=>{if(!AUTH.user||AUTH.user.id!==u.id||!name)return;$('wall').hidden=true;runPending();});}}
+    named.then(async name=>{if(!AUTH.user||AUTH.user.id!==u.id||!name)return;$('wall').hidden=true;await importGuestRounds();runPending();});}}
 // the one step waiting on a sign-in: {type:'start',kind,arg} (the round the wall stopped) or {type:'claim',tot,wins,day}
 // (put a finished Today's 6 on the board). In memory for the popup; in sessionStorage across a full-page redirect.
 let PENDING=null;
@@ -1625,9 +1625,22 @@ async function showArchive(r){await BDB.ready;if(!r.res||!r.res.length){const rb
   S.round={kind:'daily',plays:(r.res||[]).map(()=>-1),i:(r.res||[]).length-1,res:(r.res||[]).map(x=>Object.assign({},x)),qb:null,archive:{day:r.day,ranked:true}};showResults();}
 // scores
 function saveSnap(r,key){if(AUTH.user)AUTH.client.from('snaps').insert({kind:S.round.kind,play_key:key,mine:+r.mine.toFixed(3),pro:+r.pro.toFixed(3),diff:+r.diff.toFixed(3)}).then(()=>{},()=>{});}
-function saveRound(kind,total,wins,n,qb,res){if(!AUTH.user)return;const r3=v=>Math.round((+v||0)*1000)/1000;
-  const rs=res?res.filter(Boolean).map(r=>({key:r.key||'',diff:r3(r.diff),mine:r3(r.mine),pro:r3(r.pro),sit:r.sit||'',who:r.who||'',opp:r.opp||'',desc:r.desc||'',real:!!r.real})):null;
-  AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO(),res:rs}).then(()=>{},()=>{});}
+const r3=v=>Math.round((+v||0)*1000)/1000;
+const compactRes=res=>res?res.filter(Boolean).map(r=>({key:r.key||'',diff:r3(r.diff),mine:r3(r.mine),pro:r3(r.pro),sit:r.sit||'',who:r.who||'',opp:r.opp||'',desc:r.desc||'',real:!!r.real})):null;
+function saveRound(kind,total,wins,n,qb,res){
+  if(!AUTH.user){if(AUTH.client)keepGuestRound(kind,total,wins,n,qb,res);return;}
+  AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO(),res:compactRes(res)}).then(()=>{},()=>{});}
+// a guest's finished rounds stay on this device and join the account when they sign in (the round they claim a board spot
+// with, and the free rounds before the wall), so a new account doesn't start with "No snaps yet"
+function keepGuestRound(kind,total,wins,n,qb,res){try{const h=JSON.parse(localStorage.getItem('qbcam.guestHist')||'[]');
+  h.push({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO(),res:compactRes(res)});localStorage.setItem('qbcam.guestHist',JSON.stringify(h.slice(-10)));}catch(e){}}
+async function importGuestRounds(){let h;try{h=JSON.parse(localStorage.getItem('qbcam.guestHist')||'[]');}catch(e){h=[];}if(!h.length||!AUTH.user)return;
+  localStorage.removeItem('qbcam.guestHist');
+  for(const g of h){try{
+    const sn=(g.res||[]).map(r=>({kind:g.kind,play_key:r.key||'drill',mine:r.mine,pro:r.pro,diff:r.diff}));
+    if(sn.length){const a=await AUTH.client.from('snaps').insert(sn);if(a.error)throw a.error;}
+    const b=await AUTH.client.from('rounds').insert({kind:g.kind,total:g.total,wins:g.wins,n:g.n,qb:g.qb,day:g.day,res:g.res});if(b.error)throw b.error;}
+    catch(e){reportErr(e,'import');}}}
 // post a finished Today's 6 for the signed-in player (results page: show it there, with a retry; otherwise open the board)
 const pk=()=>AUTH.client?(AUTH.user?'daily.'+AUTH.user.id:null):'daily';
 const postedToday=()=>{const k=pk();return !!k&&store.get(k)===dayKey();},markPosted=()=>{const k=pk();if(k)store.set(k,dayKey());};

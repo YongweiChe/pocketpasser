@@ -19,7 +19,7 @@ export function createClient(){
       if(st.op==='insert'){if(F.failInsert&&t==='daily_scores'){F.failInsert--;return{error:{code:'net'}};}
         if(t==='daily_scores'){if(!uid)return{error:{code:'42501'}};if(rows.some(r=>r.user_id===uid&&r.day===st.row.day))return{error:{code:'23505'}};
           const p=(d.profiles.find(p=>p.id===uid)||{});st.row={...st.row,user_id:uid,name:p.username||'Player',created_at:new Date().toISOString()};}
-        else st.row={...st.row,user_id:uid,created_at:new Date().toISOString()};
+        else {const many=Array.isArray(st.row)?st.row:[st.row];if(!uid)return{error:{code:'42501'}};many.forEach(r=>rows.push({...r,user_id:uid,created_at:new Date().toISOString()}));d[t]=rows;save(d);return{error:null};}
         rows.push(st.row);d[t]=rows;save(d);return{error:null};}
       if(st.op==='upsert'){const lower=(st.row.username||'').toLowerCase();if(lower&&d.profiles.some(p=>p.id!==st.row.id&&(p.username||'').toLowerCase()===lower))return{error:{code:'23505'}};
         const i=d.profiles.findIndex(p=>p.id===st.row.id);if(i>=0)d.profiles[i]={...d.profiles[i],...st.row};else d.profiles.push(st.row);save(d);return{error:null};}
