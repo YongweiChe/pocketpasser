@@ -321,6 +321,9 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .meForm svg{display:block;width:100%;height:auto}.meForm rect{shape-rendering:crispEdges}.meForm rect:hover{opacity:.75}
 .meBests ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}.meBests li{display:flex;justify-content:space-between;gap:12px;padding:7px 10px;background:rgba(255,255,255,.035)}.meBests li b{font-family:"Retro",system-ui,sans-serif;font-size:15px}
 .meEmpty{margin:18px 0;color:var(--mute)}
+.meDays ul{max-height:260px;overflow:auto}.meDays li{padding:0;background:none}.meDay{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.035);cursor:pointer}
+.meDay:hover:not(:disabled),.meDay:focus-visible{background:rgba(245,197,24,.12);outline:1px solid rgba(245,197,24,.5)}.meDay:disabled{cursor:default;opacity:.55}
+.meDay small{display:block;color:var(--mute);font-size:13px}.meDay b{font-family:"Retro",system-ui,sans-serif;font-size:15px}.meDay b.pos{color:#4ade80}.meDay b.neg{color:#ff6b6b}
 .unForm input{width:100%;box-sizing:border-box;margin-top:6px;padding:10px 12px;font:600 20px "Retro",system-ui,sans-serif;background:#070d18;color:var(--ink);border:2px solid var(--line)}
 .unMsg{min-height:1.4em;margin:6px 0 0;font-size:14px;color:var(--mute)}.unMsg.good{color:#4ade80}.unMsg.bad{color:#ff6b6b}
 .unEdit{margin-top:4px;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--mute);font:14px "RetroText",system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.unEdit:hover{color:var(--gold)}.meBtns{justify-content:space-between}
@@ -1368,6 +1371,7 @@ function afterReplay(){const pl=play();document.body.classList.remove('playing')
 /* ======================= DAILY 6 + LEADERBOARD ======================= */
 const ROUND_N=6;
 const dayKey=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const dayLabelOf=k=>new Date(k+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'});
 const dayLabel=()=>new Date(dayKey()+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric',timeZone:'UTC'});
 function seeded(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}
   return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return((h^=h>>>16)>>>0)/4294967296;};}
@@ -1518,7 +1522,7 @@ async function openMe(){if(!AUTH.user)return;const sh=$('meSheet'),body=$('meBod
   $('mePlay').hidden=(store.get('dailyDone')||'').split('|')[0]===dayKey();body.innerHTML='<p class="mute">Loading your stats…</p>';
   let snaps,rounds;try{const [a,b]=await Promise.all([
       withTimeout(AUTH.client.from('snaps').select('diff,created_at').order('created_at',{ascending:false}).limit(5000),10000),
-      withTimeout(AUTH.client.from('rounds').select('kind,total,n,wins,qb,day,created_at').order('created_at',{ascending:false}).limit(2000),10000)]);
+      withTimeout(AUTH.client.from('rounds').select('kind,total,n,wins,qb,day,created_at,res').order('created_at',{ascending:false}).limit(2000),10000)]);
     if(a.error||b.error)throw a.error||b.error;snaps=a.data.map(r=>({d:+r.diff,at:r.created_at}));rounds=b.data.map(r=>Object.assign(r,{total:+r.total}));}
   catch(e){body.innerHTML='<p class="mute">Couldn’t load your stats right now.</p>';return;}
   const since=[...snaps,...rounds].map(r=>r.created_at||r.at).sort()[0];
@@ -1530,6 +1534,7 @@ async function openMe(){if(!AUTH.user)return;const sh=$('meSheet'),body=$('meBod
   const days=new Set(rounds.filter(r=>r.kind==='daily').map(r=>r.day));const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   let streak=0;const d=new Date();if(!days.has(iso(d)))d.setDate(d.getDate()-1);while(days.has(iso(d))){streak++;d.setDate(d.getDate()-1);}
   const tile=(v,l,c)=>`<div class="meTile"><b class="${c||''}">${v}</b><span>${l}</span></div>`;
+  const dailyRuns=[...rounds].filter(r=>r.kind==='daily').sort((a,b)=>a.created_at<b.created_at?-1:1).filter((r,i,a)=>a.findIndex(x=>x.day===r.day)===i).reverse();
   const dailies=rounds.filter(r=>r.kind==='daily'),bestDaily=dailies.length?Math.max(...dailies.map(r=>r.total)):null;
   const bled=rounds.filter(r=>r.kind==='bledsoe'),bestBled=bled.length?Math.max(...bled.map(r=>r.n)):null;
   const beaten=new Set(rounds.filter(r=>r.kind==='versus'&&r.total>0&&r.qb).map(r=>r.qb));
@@ -1542,17 +1547,24 @@ async function openMe(){if(!AUTH.user)return;const sh=$('meSheet'),body=$('meBod
       <li><span>Best Today’s 6</span><b>${bestDaily==null?'—':fmt(bestDaily)+' EPA'}</b></li>
       <li><span>Longest Drew Bledsoe run</span><b>${bestBled==null?'—':bestBled+' snaps'}</b></li>
       <li><span>QBs beaten in versus</span><b>${beaten.size}</b></li>
-      <li><span>Rounds finished</span><b>${rounds.length}</b></li></ul></div>`;}
+      <li><span>Rounds finished</span><b>${rounds.length}</b></li></ul></div>
+    ${dailyRuns.length?`<div class="meBests meDays"><h3>YOUR TODAY’S 6</h3><ul>${dailyRuns.slice(0,30).map((r,k)=>`<li><button class="meDay" data-k="${k}"${r.res&&r.res.length?'':' disabled title="Play-by-play wasn’t saved for this one"'}><span>${esc(dayLabelOf(r.day))}<small>${r.wins}/${r.n} snaps won</small></span><b class="${r.total>=0?'pos':'neg'}">${fmt(r.total)}</b></button></li>`).join('')}</ul></div>`:''}`;
+  body.querySelectorAll('.meDay').forEach(b=>b.onclick=()=>{const r=dailyRuns[+b.dataset.k];$('meSheet').hidden=true;showArchive(r);});}
+// reopen a past Today's 6 as its results page (read-only: nothing is saved or posted)
+function showArchive(r){$('start').hidden=true;document.body.classList.remove('home');
+  S.round={kind:'daily',plays:(r.res||[]).map(()=>-1),i:(r.res||[]).length-1,res:(r.res||[]).map(x=>Object.assign({},x)),qb:null,archive:{day:r.day,ranked:true}};showResults();}
 // scores
 function saveSnap(r,key){if(AUTH.user)AUTH.client.from('snaps').insert({kind:S.round.kind,play_key:key,mine:+r.mine.toFixed(3),pro:+r.pro.toFixed(3),diff:+r.diff.toFixed(3)}).then(()=>{},()=>{});}
-function saveRound(kind,total,wins,n,qb){if(AUTH.user)AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO()}).then(()=>{},()=>{});}
+function saveRound(kind,total,wins,n,qb,res){if(!AUTH.user)return;const r3=v=>Math.round((+v||0)*1000)/1000;
+  const rs=res?res.filter(Boolean).map(r=>({diff:r3(r.diff),mine:r3(r.mine),pro:r3(r.pro),sit:r.sit||'',who:r.who||'',opp:r.opp||'',desc:r.desc||'',real:!!r.real})):null;
+  AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO(),res:rs}).then(()=>{},()=>{});}
 const dayKeyISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 // shared leaderboard: Supabase when configured, else the claude.ai artifact db; absent otherwise
 const LB={db:null,me:null,canWrite:null};
 (async()=>{try{if(!window.claude||!claude.use)return;const [u,db]=await Promise.all([claude.use('user'),claude.use('db')]);if(!u||!db)return;
   LB.db=db;LB.me=await u.id();try{LB.canWrite=await u.can('data.write');}catch(e){}}catch(e){}})();
 function withTimeout(p,ms){return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),ms))]);}
-async function loadBoard(){await AUTH.ready;if(AUTH.client){const {data,error}=await withTimeout(AUTH.client.from('daily_scores').select('user_id,name,score,wins,created_at').eq('day',dayKeyISO()).order('score',{ascending:false}).limit(500),10000);
+async function loadBoard(day){await AUTH.ready;if(AUTH.client){const {data,error}=await withTimeout(AUTH.client.from('daily_scores').select('user_id,name,score,wins,created_at').eq('day',day||dayKeyISO()).order('score',{ascending:false}).limit(500),10000);
     if(error)throw error;return data.map(r=>({id:r.user_id,ini:r.name,score:+r.score,wins:r.wins,at:Date.parse(r.created_at)}));}
   if(!LB.db)return null;const snap=await withTimeout(LB.db.collection('scores').where('day','==',dayKey()).limit(1000).get(),10000);
   return snap.docs.map(d=>Object.assign({id:d.id},d.data())).filter(r=>typeof r.score==='number').sort((a,b)=>b.score-a.score||b.wins-a.wins||a.at-b.at);}
@@ -1675,24 +1687,27 @@ function anTend(res,W){const n=res.length,c=f=>res.filter(f).length,inB=(a,l,h)=
     `<div class="tRow"><span>${lab}${sub?`<small>${sub}</small>`:''}</span><div class="tBars">${bar('you','You',c(fy))}${bar('pro',W,c(fp))}</div></div>`).join('')+
     `<p class="mute anHint" style="margin:2px 0 0">Out of ${n} snaps. Completions and interceptions for you are the model’s roll; for ${esc(W)}, what really happened.</p>`;}
 async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.length,tot=res.reduce((a,r)=>a+r.diff,0),wins=res.filter(r=>r.diff>=0).length,
-    isDaily=R.kind==='daily',isTut=R.kind==='tutorial',isVs=R.kind==='versus',W=isVs?R.qb.split(' ').pop():'the pro';
-  if(isDaily&&(store.get('dailyDone')||'').split('|')[0]!==dayKey())store.set('dailyDone',dayKey()+'|'+tot.toFixed(2));
+    isDaily=R.kind==='daily',isTut=R.kind==='tutorial',isVs=R.kind==='versus',W=isVs?R.qb.split(' ').pop():'the pro',A=R.archive;
+  if(isDaily&&!A&&(store.get('dailyDone')||'').split('|')[0]!==dayKey())store.set('dailyDone',dayKey()+'|'+tot.toFixed(2));
   let vsNote='';if(isVs){const old=vsRec(R.qb);if(!old||tot>old.best){store.set('vs.'+R.qb,tot.toFixed(2)+'|'+wins+'|'+n);vsNote=old?` New best against ${W} (was ${fmt(old.best)}).`:'';}else vsNote=` Your best against ${W}: ${fmt(old.best)}.`;}
   S.phase='results';clearTimeout(S.revealTO);hideReview();$('reveal').hidden=true;$('res').hidden=true;banner('');document.body.classList.add('resultsOn');
   if(isTut)store.set('tutDone','1');
-  $('rsKind').textContent=isTut?'Tutorial complete':isDaily?'Today’s 6 · '+dayLabel():isVs?'Versus · '+R.qb:'Practice round · '+dayLabel();
+  $('rsKind').textContent=A?'Today’s 6 · '+dayLabelOf(A.day):isTut?'Tutorial complete':isDaily?'Today’s 6 · '+dayLabel():isVs?'Versus · '+R.qb:'Practice round · '+dayLabel();
   $('rsTotal').textContent=fmt(tot)+' EPA';$('rsTotal').className='band-'+bandOf(tierOf(tot/Math.max(1,n)));
   $('rsSub').textContent=(tot>=0?`You beat ${W}`:tot/Math.max(1,n)>-.1?`Neck and neck with ${W}`:bandOf(tierOf(tot/Math.max(1,n)))==='good'?`Close to ${W}`:`${W[0].toUpperCase()+W.slice(1)} beat you`)+` · ${wins} of ${n} snaps won`+(isTut?' · you’re ready for today’s 6':isDaily||isVs?'':' · practice rounds aren’t ranked');
   if(vsNote)$('rsSub').textContent+=' ·'+vsNote;
   $('again').textContent=isTut?'Play today’s 6':isVs?'Play '+W+' again':'Play another 6 snaps';
   $('again').onclick=()=>isTut?startRound('daily'):isVs?startRound('versus',R.qb):startRound('practice');
+  if(A){$('again').textContent='Back to your stats';$('again').onclick=()=>{goHome();openMe();};}
   $('rsAlt').hidden=!isVs;$('rsAlt').textContent='Pick another QB';$('rsAlt').onclick=()=>{goHome();openVs();};
   document.querySelectorAll('#results .proName').forEach(e=>e.textContent=isVs?W:'The pro');$('rsTendH').textContent='How you threw vs '+(isVs?W:'the pros');
-  anRank(res,tot,W);ANN.stop();ANN.say('rank-'+tierOf(tot/Math.max(1,n))[1].toLowerCase().replace(/[^a-z0-9]+/g,'-'));anDumb(res,W);
+  anRank(res,tot,W);ANN.stop();if(!A)ANN.say('rank-'+tierOf(tot/Math.max(1,n))[1].toLowerCase().replace(/[^a-z0-9]+/g,'-'));anDumb(res,W);
   $('rsList').innerHTML=res.map((r,k)=>`<li><span class="n">${k+1}</span><span class="t">${esc(r.title)}<small>${esc(r.sit)} · You: ${esc(r.desc)}${r.proText?' · Real play: '+esc(r.proText):''}${r.best&&!r.found?'<br>Best read: '+esc(r.best)+'. '+esc(r.why):r.found?'<br>You found the best read.':''}</small></span><span class="d ${r.diff>=0?'pos':'neg'}">${fmt(r.diff)}</span></li>`).join('');
-  $('rsLbCard').hidden=isTut||isVs||!(LB.db||AUTH.client);if(!isTut)saveRound(R.kind,tot,wins,n,R.qb);$('results').hidden=false;$('results').scrollTop=0;$('anTip').hidden=true;setTimeout(()=>$('again').focus({preventScroll:true}),40);
+  $('rsLbCard').hidden=isTut||isVs||!(LB.db||AUTH.client);if(!isTut&&!A)saveRound(R.kind,tot,wins,n,R.qb,res);$('results').hidden=false;$('results').scrollTop=0;$('anTip').hidden=true;setTimeout(()=>$('again').focus({preventScroll:true}),40);
   $('rsBoard').innerHTML='<p class="mute">Loading today’s leaderboard…</p>';$('rsRank').innerHTML='';$('rsForm').hidden=true;$('rsNote').textContent='';
+  $('rsLbH').textContent=A?'Leaderboard · '+dayLabelOf(A.day):'Today’s leaderboard';
   if(isTut||isVs)return;
+  if(A){$('rsNote').textContent=A.ranked?'This was your ranked run that day.':'';try{renderBoard(await loadBoard(A.day),tot,true);}catch(e){$('rsBoard').innerHTML='<p class="mute">Couldn’t reach the leaderboard right now.</p>';}return;}
   const done=store.get('daily')===dayKey();
   if(isDaily&&AUTH.user&&!done){$('rsNote').textContent='Posting to today’s board…';if(AUTH.named)await AUTH.named;const r=await submitScore(AUTH.name,tot,wins);
     if(r.ok||r.why==='already'){store.set('daily',dayKey());$('rsNote').textContent=r.ok?'Posted to today’s board as '+AUTH.name+'.':'Your first run today ('+fmt(r.score)+') is already on the board.';}
