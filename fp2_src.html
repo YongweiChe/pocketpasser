@@ -1798,7 +1798,7 @@ async function showResults(){const R=S.round,res=R.res.filter(Boolean),n=res.len
   document.querySelectorAll('#results .proName').forEach(e=>e.textContent=isVs?W:'The pro');$('rsTendH').textContent='How you threw vs '+(isVs?W:'the pros');
   anRank(res,tot,W);ANN.stop();if(!A)ANN.say('rank-'+tierOf(tot/Math.max(1,n))[1].toLowerCase().replace(/[^a-z0-9]+/g,'-'));anDumb(res,W);
   $('rsList').innerHTML=res.map((r,k)=>`<li><span class="n">${k+1}</span><span class="t">${esc(r.title)}<small>${esc(r.sit)} · You: ${esc(r.desc)}${r.proText?' · Real play: '+esc(r.proText):''}${r.best&&!r.found?'<br>Best read: '+esc(r.best)+'. '+esc(r.why):r.found?'<br>You found the best read.':''}</small></span><span class="d ${r.diff>=0?'pos':'neg'}">${fmt(r.diff)}</span></li>`).join('');
-  $('rsLbCard').hidden=isTut||isVs||!(LB.db||AUTH.client);if(!isTut&&!A)saveRound(R.kind,tot,wins,n,R.qb,res);$('results').hidden=false;$('results').scrollTop=0;$('anTip').hidden=true;setTimeout(()=>$('again').focus({preventScroll:true}),40);
+  $('rsLbCard').hidden=!isDaily||!(LB.db||AUTH.client);/* only Today's 6 is on the board (a practice round's "You'd be #N" read as if it counted) */if(!isTut&&!A)saveRound(R.kind,tot,wins,n,R.qb,res);$('results').hidden=false;$('results').scrollTop=0;$('anTip').hidden=true;setTimeout(()=>$('again').focus({preventScroll:true}),40);
   $('rsBoard').innerHTML='<p class="mute">Loading today’s leaderboard…</p>';$('rsRank').innerHTML='';$('rsForm').hidden=true;$('rsNote').textContent='';
   $('rsLbH').textContent=A?'Leaderboard · '+dayLabelOf(A.day):'Today’s leaderboard';
   if(isTut||isVs)return;

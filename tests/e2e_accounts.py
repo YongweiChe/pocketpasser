@@ -1,6 +1,6 @@
 """Account state machine: sign-in, the 2-round guest wall, claiming a Today's 6 spot, usernames, sign-out, retries.
 Uses a fake Supabase (tests/fake_supabase.js served in place of supabase-js) so timing, sessions and failures are controlled.
-Run with the local server on :8000:  python3 tests/e2e_accounts.py   (expects 16/16 passed)"""
+Run with the local server on :8000:  python3 tests/e2e_accounts.py   (expects 17/17 passed)"""
 import os
 from playwright.sync_api import sync_playwright
 GSI_FAKE="""window.google={accounts:{id:{initialize(o){window.__gsi=o;},renderButton(el){const b=document.createElement('button');b.id='fakeGoogle';b.textContent='Continue with Google';
@@ -134,5 +134,12 @@ with sync_playwright() as p:
     wait(pg,"/Posted to today/.test(document.getElementById('rsNote').textContent)",10000);pg.wait_for_timeout(500)
     db=pg.evaluate("(()=>{const d=JSON.parse(localStorage.getItem('fake.db'));return{snaps:d.snaps.filter(r=>r.user_id==='u8').length,rounds:d.rounds.filter(r=>r.user_id==='u8').map(r=>r.kind),board:d.daily_scores.length,left:localStorage.getItem('qbcam.guestHist')}})()")
     check('16 guest rounds join the new account: 12 snaps, practice + daily rounds',db['snaps']==12 and sorted(db['rounds'])==['daily','practice'] and db['board']==1 and not db['left'],db);ctx.close()
+    # 17. results pages actually show; only Today's 6 shows the leaderboard (practice never looks ranked)
+    ctx,pg=fresh()
+    pg.goto(URL);wait(pg,"__AUTH.settled");pg.click('#goPractice');wait(pg,"!!__S.round");pg.evaluate(FIN);pg.wait_for_timeout(800)
+    prac=(pg.is_visible('#results'),pg.is_visible('#rsLbCard'));pg.click('#rsHome');pg.wait_for_timeout(500)
+    pg.click('#go');wait(pg,"__S.round&&__S.round.kind==='daily'&&__S.phase!=='results'");pg.evaluate(FIN);pg.wait_for_timeout(800)
+    daily=(pg.is_visible('#results'),pg.is_visible('#rsLbCard'))
+    check('17 results visible; leaderboard only on Today\'s 6',prac==(True,False) and daily==(True,True),(prac,daily));ctx.close()
     b.close()
 print(f"\n{sum(r for _,r in res)}/{len(res)} passed")
