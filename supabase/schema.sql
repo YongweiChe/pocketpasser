@@ -65,3 +65,7 @@ create policy "post own score" on public.daily_scores for insert to authenticate
 
 create index if not exists daily_scores_day on public.daily_scores (day, score desc);
 create index if not exists rounds_user on public.rounds (user_id, created_at desc);
+
+-- sanity limits on posted scores (scores are client-reported; this stops absurd values, not careful cheating)
+alter table public.daily_scores drop constraint if exists daily_scores_sane;
+alter table public.daily_scores add constraint daily_scores_sane check (score between -30 and 30 and wins between 0 and 6 and char_length(name) between 1 and 40 and day between current_date - 1 and current_date + 1);

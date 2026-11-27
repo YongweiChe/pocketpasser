@@ -1419,7 +1419,7 @@ function tutApply(){if(!isTut())return;S.limit=tutGuided()?TUT[0].limit:(coarse?
 /* ======================= ACCOUNTS (Supabase: Google sign-in + Postgres) =======================
    Off until SUPA.url/key are filled in (the anon key is public by design; row-level security in supabase/schema.sql protects the data).
    Guests get GUEST_SNAPS snaps outside the tutorial, then a sign-in wall; after the Google redirect the round resumes. */
-const SUPA={url:'',key:''},GUEST_SNAPS=2;
+const SUPA={url:'https://nilgjuxrbqbvsckctmxc.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pbGdqdXhyYnFidnNja2N0bXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3ODk0ODEsImV4cCI6MjExMTM2NTQ4MX0.iewxdQOvKyRbKxgmK-zXqp0-NFa_Cy1wVzhumQXMn1A'},GUEST_SNAPS=2;   // anon key: public by design (row-level security guards the tables)
 const AUTH={client:null,user:null,name:'',ready:null};
 const authName=u=>{const m=u&&u.user_metadata||{},full=(m.full_name||m.name||'').trim().split(/\s+/);return full[0]?full[0]+(full.length>1?' '+full[full.length-1][0]+'.':''):'Player';};
 AUTH.ready=(async()=>{if(!SUPA.url||!SUPA.key)return;
