@@ -88,7 +88,7 @@ body.playing #res{display:none}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:6;image-rendering:pixelated}
 #flash b{font-family:"Retro",system-ui,sans-serif;font-size:clamp(64px,15vw,190px);line-height:.9}
 #flash span{font-family:"Retro",system-ui,sans-serif;font-size:clamp(22px,3.4vw,38px);font-weight:700}
-#flash i{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:clamp(14px,1.8vw,20px);color:#b9f6c9;margin-top:10px}#flash i[hidden]{display:none}
+#flash i{font-style:normal;font-family:"Retro",system-ui,sans-serif;font-size:clamp(14px,1.8vw,20px);color:#b9f6c9;margin-top:10px;max-width:min(760px,90vw);line-height:1.35;white-space:pre-line}#flash i.why{color:#e8eef5}#flash i[hidden]{display:none}
 #flash em{font-style:normal;font-size:clamp(16px,2vw,22px);margin-top:6px}
 @keyframes fl{0%{opacity:0;transform:scale(1.25)}5%{opacity:1;transform:scale(1)}88%{opacity:1}100%{opacity:0}}
 #mute{right:14px;top:84px;min-width:44px;padding:0 10px;background:var(--glass)}
@@ -373,7 +373,8 @@ body.resultsOn #sit,body.resultsOn #controls,body.resultsOn #badge,body.resultsO
 #cd i{display:block;width:min(320px,70vw);height:8px;margin:10px auto 0;border-radius:4px;background:rgba(0,0,0,.45);overflow:hidden}
 #cd s{display:block;height:100%;background:#fff;text-decoration:none}
 #cd[data-mode=pre] b{font-size:clamp(40px,6vw,64px)}#cd[data-mode=pre]{top:12%}
-#cd[data-mode=count] b{font-size:clamp(90px,16vw,170px);color:#fff}
+#cd[data-mode=count] b{font-size:clamp(40px,6vw,64px);color:#f5c518}#cd[data-mode=count]{top:12%}   /* one countdown, one size: the last 3 s only turn gold (a size jump read as a second timer) */
+#cd{transition:opacity .2s}body.ddOn #cd{opacity:0}   /* the down & distance flash plays alone: a big "10" next to the countdown read as two timers */
 #cd[data-mode=count] b.pop{animation:tick .6s ease-out}
 #cd[data-mode=wait] small{color:#7cc4ff;font-size:22px}#cd[data-mode=wait] b{font-size:clamp(34px,5vw,54px)}#cd[data-mode=wait] s{background:#7cc4ff}
 #cd[data-mode=go] b{color:var(--gold);font-size:clamp(54px,8.5vw,100px);animation:go .7s ease-out}
@@ -655,10 +656,10 @@ function bledEnd(){const R=S.round,n=R.res.filter(Boolean).length,t=bledTot(),be
     ['Gillette Stadium · the sideline','Belichick made the call.',[`You lasted <b>${n} snaps</b> before the leash ran out.`+(rec?' A new personal record.':best?` Your record is ${best}.`:''),'Tom Brady jogged onto the field. He never gave the job back.'],'Try again','Home']
   ],r=>{if(r==='ok')bledIntro();else goHome();},true);}
 function ordinal(n){return['','1st','2nd','3rd','4th'][n];}
-function ddFlash(p){const el=$('ddFlash');if(!el)return;clearTimeout(el._d);el.innerHTML='';el._d=setTimeout(()=>{if(play()===p&&S.phase==='pre')ddFlashNow(p);},1000);}
+function ddFlash(p){const el=$('ddFlash');if(!el)return;clearTimeout(el._d);clearTimeout(el._t);el.innerHTML='';document.body.classList.remove('ddOn');el._d=setTimeout(()=>{if(play()===p&&S.phase==='pre')ddFlashNow(p);},1000);}
 function ddFlashNow(p){const el=$('ddFlash');const words=[ordinal(p.down),'&',p.dist>=p.ytg?'Goal':String(p.dist)],gap=.42;
   el.className='d'+p.down;el.innerHTML=words.map((w,i)=>`<b class="${i===0?'n':i===1?'amp':'last'}" style="animation-delay:${(i*gap).toFixed(2)}s">${w}</b>`).join('');
-  clearTimeout(el._t);el._t=setTimeout(()=>{el.innerHTML='';},(words.length-1)*gap*1000+1400);}
+  document.body.classList.add('ddOn');clearTimeout(el._t);el._t=setTimeout(()=>{el.innerHTML='';document.body.classList.remove('ddOn');},(words.length-1)*gap*1000+1400);}
 function fieldPos(ytg){const a=100-ytg;return a<50?'own '+a:a===50?'midfield':'opp '+(100-a);}
 const coarse=matchMedia('(pointer:coarse)').matches;
 
@@ -1614,7 +1615,7 @@ function snapVerdict(d,P,pl){const ev=P&&P.ev||{},caught=P&&P.kind==='complete',
   if(d>=.1){const w=td?'TOUCHDOWN!':caught&&gd<1.3?'TIGHT WINDOW!':depth>=32&&pC<.6?(caught?'50/50… WON IT!':'50/50 BALL!'):early>=.4?'ANTICIPATION!':caught&&pC<.5?'WHAT A DIME!':d>=1.5?'HUGE WIN':d>=.5?'BIG WIN':pC>=.8?'EASY MONEY':'WIN';
     return[w,'win',d>=.5?2:1];}
   if(d>-.1)return[same?'SAME READ':'DEAD EVEN','even',0];
-  const w=P&&P.sack?'Sacked':P&&P.kind==='int'?'Picked off':gd<1&&!caught?'Too tight':depth>=32&&pC<.4?'Hope ball':depth<6&&proDepth>depth+8?'Too safe':d>-.5?'Close one':d>-1.5?'Not this time':'Oof';
+  const w=P&&P.sack?'Sacked':P&&P.kind==='int'?'Picked off':td?'Lucky TD':caught&&pC<.45?'Lucky catch':gd<1&&!caught?'Too tight':depth>=32&&pC<.4?'Hope ball':depth<6&&proDepth>depth+8?'Too safe':d>-.5?'Close one':d>-1.5?'Not this time':'Oof';
   return[w,'loss',0];}
 // your real result vs what the pro really got: a positive line when yours turned out better even if the read scored lower
 const OC_RANK={td:4,complete:3,incomplete:2,sack:1,int:0};
@@ -1830,7 +1831,10 @@ function finishReal(){
   const f=$('flash');f.className='hud';void f.offsetWidth;const vd=snapVerdict(diff,P,pl);document.body.classList.add('held');f.className='hud on '+vd[1];if(vd[2]&&!P.replay)confetti(vd[2]);
   f.querySelector('b').textContent=vd[0];ANN.say(diff>=.5?'beat-pro-big':diff>=0?'beat-pro':diff<=-1.5?'blunder':diff<=-.5?'lost-big':'lost');
   f.querySelector('span').textContent=Math.abs(diff)<.005?'You matched the pro':(diff>0?'You beat the pro by ':Math.abs(diff)<.1?'The pro edged you by ':'The pro beat you by ')+Math.abs(diff).toFixed(2)+' EPA';
-  const oc=outcomeNote(P,pl);f.querySelector('i').textContent=oc;f.querySelector('i').hidden=!oc;
+  const thrownOk=P&&!P.sack&&!P.away&&P.ev,pc=thrownOk?P.ev.pC||0:0;
+  const why=diff<=-.1&&thrownOk&&(P.cine==='td'||P.kind==='complete')?'Graded on the decision, not the result: '+(pc<.05?'that throw almost never gets caught.':pc<.6?'that throw is caught only '+Math.round(pc*100)+'% of the time.':'the pro’s throw was the better bet.'):'';
+  const oc=[outcomeNote(P,pl),why].filter(Boolean).join('\n');f.querySelector('i').textContent=oc;f.querySelector('i').hidden=!oc;
+  f.querySelector('i').classList.toggle('why',!!why&&!outcomeNote(P,pl));
   f.querySelector('em').textContent=describe(P)+(earlyBy(P)?' · released '+earlyBy(P).toFixed(1)+' s before the pro':'')+(last?' · Round total '+fmt(tot)+' EPA vs the pros':'');
   if(tutGuided())setTimeout(()=>{if(tutGuided()&&S.phase==='done'&&play()===pl)tutCard('done');},4400);
   holdHere();
