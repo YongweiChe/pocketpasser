@@ -374,6 +374,7 @@ body.resultsOn #sit,body.resultsOn #controls,body.resultsOn #badge,body.resultsO
 #cd s{display:block;height:100%;background:#fff;text-decoration:none}
 #cd[data-mode=pre] b{font-size:clamp(40px,6vw,64px)}#cd[data-mode=pre]{top:12%}
 #cd[data-mode=count] b{font-size:clamp(40px,6vw,64px);color:#f5c518}#cd[data-mode=count]{top:12%}   /* one countdown, one size: the last 3 s only turn gold (a size jump read as a second timer) */
+#glLost{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(4,8,16,.88);text-align:center;padding:16px}#glLost b{font:700 22px "Retro",system-ui,sans-serif}#glLost p{color:var(--mute)}
 #cd{transition:opacity .2s}body.ddOn #cd{opacity:0}   /* the down & distance flash plays alone: a big "10" next to the countdown read as two timers */
 #cd[data-mode=count] b.pop{animation:tick .6s ease-out}
 #cd[data-mode=wait] small{color:#7cc4ff;font-size:22px}#cd[data-mode=wait] b{font-size:clamp(34px,5vw,54px)}#cd[data-mode=wait] s{background:#7cc4ff}
@@ -2316,6 +2317,18 @@ function update(dt,sdt,now){
 
 /* ======================= LOOP ======================= */
 const RES_EL=document.getElementById('results'),START_EL=document.getElementById('start');
+// error reports: a few per page load, to the client_errors table (insert-only; no account or personal data)
+const ERR={n:0,seen:new Set()};
+function reportErr(e,where){try{const msg=String(e&&e.message||e).slice(0,500);console.error(where,e);if(ERR.n>=4||ERR.seen.has(msg)||!SUPA.url)return;ERR.n++;ERR.seen.add(msg);
+  const ctx=[where,S.phase,S.round&&S.round.kind,S.round&&S.round.i,coarse?'touch':'mouse',innerWidth+'x'+innerHeight,'v'+(document.lastModified||'')].join(' | ').slice(0,300);
+  fetch(SUPA.url+'/rest/v1/client_errors',{method:'POST',keepalive:true,headers:{apikey:SUPA.key,Authorization:'Bearer '+SUPA.key,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({msg,stack:String(e&&e.stack||'').slice(0,2000),ctx,ua:navigator.userAgent.slice(0,300)})}).catch(()=>{});}catch(_){}}
+addEventListener('error',e=>reportErr(e.error||e.message,'window'));addEventListener('unhandledrejection',e=>reportErr(e.reason,'promise'));
+// iPhone Safari can drop the 3D context under memory pressure: say so (and offer a reload) instead of showing a frozen frame
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();reportErr(new Error('webgl context lost'),'gl');
+  let o=document.getElementById('glLost');if(!o){o=document.createElement('div');o.id='glLost';o.innerHTML='<div><b>The graphics reset</b><p>Your browser paused the 3D view.</p><button class="go">Tap to reload</button></div>';
+    o.querySelector('button').onclick=()=>{try{saveResume();}catch(_){}location.reload();};document.body.appendChild(o);}o.hidden=false;});
+renderer.domElement.addEventListener('webglcontextrestored',()=>{const o=document.getElementById('glLost');if(o)o.hidden=true;});
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<1?95:66;cam.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(host);resize();
 let last=performance.now();
@@ -2323,8 +2336,11 @@ let last=performance.now();
 const AR={pr:renderer.getPixelRatio(),ema:16.7,since:0,k:0};
 function adaptRes(now,ms){if(document.hidden||ms>250||ms<=0)return;AR.ema+=(ms-AR.ema)*.04;
   if(now-AR.since>2500&&AR.ema>22&&AR.pr>1){AR.pr=Math.max(1,Math.round((AR.pr-.25)*100)/100);renderer.setPixelRatio(AR.pr);resize();AR.since=now;AR.ema=16.7;}}
-function loop(){const now=performance.now();adaptRes(now,now-last);const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;   // one clock for everything (deadlines are set with performance.now())
-  if(S.paused){requestAnimationFrame(loop);return;}   // Esc menu: the play is frozen; closePause() shifts the deadlines
+// the loop schedules its next frame first: an error in one frame is reported and skipped instead of freezing the game
+// (players saw a frozen field with no text when a frame threw once)
+function loop(){requestAnimationFrame(loop);try{frame();}catch(e){reportErr(e,'frame');}}
+function frame(){const now=performance.now();adaptRes(now,now-last);const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;   // one clock for everything (deadlines are set with performance.now())
+  if(S.paused)return;   // Esc menu: the play is frozen; closePause() shifts the deadlines
   if(S.phase!=='idle'){const pl=play();
     if((S.tutCard&&S.tutCard.startsWith('pre'))||S.tutGap)S.memoEnd=Math.max(S.memoEnd,now+12000);
     if(S.tutGap&&now>=S.tutGap&&S.phase==='pre'){S.tutGap=0;tutCard('pre2');}
@@ -2343,7 +2359,7 @@ function loop(){const now=performance.now();adaptRes(now,now-last);const dt=Math
   const pf=window.__perf,t0=pf?performance.now():0;update(dt,sdt,now);const t1=pf?performance.now():0;if(window.__camOv)window.__camOv(cam,now);
   // behind a (nearly) opaque page the scene barely shows: draw it less often (results page; the home page on phones)
   const skip=!RES_EL.hidden?6:(coarse&&!START_EL.hidden?2:1);if(++AR.k%skip===0)renderer.render(scene,cam);
-  if(pf){const t2=performance.now();pf.n++;pf.upd+=t1-t0;pf.ren+=t2-t1;pf.maxUpd=Math.max(pf.maxUpd,t1-t0);pf.calls=renderer.info.render.calls;}requestAnimationFrame(loop);}   // __perf={n:0,upd:0,ren:0,maxUpd:0}: frame timing   // __camOv: debug camera hook (trailer capture)
+  if(pf){const t2=performance.now();pf.n++;pf.upd+=t1-t0;pf.ren+=t2-t1;pf.maxUpd=Math.max(pf.maxUpd,t1-t0);pf.calls=renderer.info.render.calls;}}   // __perf={n:0,upd:0,ren:0,maxUpd:0}: frame timing   // __camOv: debug camera hook (trailer capture)
 setType('touch');if(coarse){S.limit=5000;syncDiff();}buildField(PLAYS[0]);buildActors(PLAYS[0]);requestAnimationFrame(loop);
 window.__chest=id=>{const pl=play(),o=pl.byId[id],q=pos(pl,o,S.phase==='run'?S.t:pl.T),v=V(q.x,q.y,1.3).project(cam),r=cv.getBoundingClientRect();return v.z>1?null:[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height];};window.__dbg=(id,x,y)=>{const pl=play(),o=pl.byId[id];return{rec:pos(pl,o,pl.T),aim:groundAt(x,y),cam:[cam.position.x+MID,-cam.position.z,cam.position.y]};};window.__pathPt=(i,k)=>{const L=PATH.list[i];if(!L)return null;const p=L.pts[Math.min(k,L.pts.length-1)],v=V(p.x,p.y,1).project(cam),r=cv.getBoundingClientRect();return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height,L.r.id,p.t];};window.__ghost=()=>[ghost.visible,ghost.position.x,ghost.position.z];window.__setArt=setArt;window.__rx=()=>actors.filter(a=>a.off&&a.p&&!a.p.big).map(a=>[a.id,+a.v.toFixed(1),a.g.userData.rig.st.up,+a.g.position.y.toFixed(2)]);window.__atlas=(st,side,num)=>{const o=ART.cur;ART.cur=st;const t=drawCutout(KIT[side],num,SKINC[(num*7)%SKINC.length]);ART.cur=o;return t.image.toDataURL();};window.__S=S;window.__ANN=ANN;window.__begin=begin;window.__PLAYS=PLAYS;window.__showResults=()=>showResults();
 window.__force=(x,y,type,kind,sub,yac)=>{const P=makePlan({x,y},type,{kind,yac:yac||0});if(sub)P.sub=sub;startThrow(P,true);};window.__load=i=>loadPlay(i);window.__confetti=confetti;window.__ddFlash=()=>ddFlashNow(play());window.__AUTH=AUTH;window.__throw=(x,y,type)=>startThrow(makePlan({x,y},type||S.type,null),true);window.__ring=()=>{if(!hintRing.visible)return null;const v=hintRing.position.clone().project(cam);return[+v.x.toFixed(2),+v.y.toFixed(2),v.z<1];};window.__verdict=snapVerdict;
