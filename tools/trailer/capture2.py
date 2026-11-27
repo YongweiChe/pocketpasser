@@ -62,7 +62,7 @@ def main():
         # shot 3: route view, the down-and-distance flash punches in
         shoot('s3_routes', 120, each=lambda f: f == 8 and pg.evaluate("__ddFlash()"))
         # shot 4: memorize the routes, countdown visible
-        pg.evaluate("document.body.classList.remove('trailer-quiet');__S.memoEnd=performance.now()+4300")
+        pg.evaluate("document.body.classList.remove('trailer-quiet');__S.memoEnd=performance.now()+4300"); tick()   # one frame so the countdown redraws before the first shot
         shoot('s4_memorize', 120)
         # shots 5-6: snap -> the camera drops into the QB's eyes -> dropback, a look left and back
         pg.keyboard.press('Space')

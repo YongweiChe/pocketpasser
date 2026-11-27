@@ -65,9 +65,9 @@ def main():
         push = frames_of('s12_push')
         play(push[:120], [("THINK YOU'RE", 72, WHITE), ("SMART ENOUGH", 72, WHITE)], 'mid', 12, 118)
         play(push[120:], [("TO MAKE IT AS AN", 56, WHITE), ("NFL QUARTERBACK?", 84, GOLD)], 'mid', 2, 88)
-    # 3: open straight on the route view as the down & distance punches in (a 4-frame fade up from black), then the caption
-    play(frames_of('s3_routes'), [("REAL NFL PLAYS.", 64, WHITE), ("REAL TRACKING DATA.", 64, GOLD)], 'low', 64, 118, fade_from_black=0 if INTRO else 4)
-    play(frames_of('s4_memorize'), [("MEMORIZE THE ROUTES.", 64, WHITE)], 'low', 6, 116)                                # 4
+    # 3: open straight on the route view (hard start) as the down & distance punches in, then the caption
+    play(frames_of('s3_routes'), [("REAL NFL PLAYS.", 64, WHITE), ("REAL TRACKING DATA.", 64, GOLD)], 'low', 64, 118, fade_from_black=0)
+    play(frames_of('s4_memorize', 1), [("MEMORIZE THE ROUTES.", 64, WHITE)], 'low', 6, 116)                                # 4
     drop = frames_of('s56_drop')                                                     # 5-6: snap, drop into the QB's eyes
     play(drop, [("DROP INTO THE", 64, WHITE), ("QUARTERBACK'S SLOT.", 64, GOLD)], 'low', 0, 62)
     play(frames_of('s7_freeze'), [("THE PRO THREW HERE.", 64, WHITE), ("YOUR CALL.", 64, GOLD)], 'low', 6, 88)          # 7
