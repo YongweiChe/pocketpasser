@@ -1391,7 +1391,7 @@ function tutCard(step){const pl=play(),m=pl.meta||{},qb=pl.real?pl.qb.name:'the 
     pre2:['Tutorial · 2 of 4','At the snap, you become the quarterback',P('Get ready to memorize the routes. They disappear at the snap.')+P(`When ${esc(last)} really threw the ball, we freeze the frame, and you decide exactly where it goes.`),'Show me the routes'],
     look:['Tutorial · 3 of 4','Find your read',P('You’re the quarterback now. Make sure you’re looking at the right receiver when the freeze comes.')+P(look),'Got it'],
     decide:['Tutorial · 4 of 4','The time is now',P(coarse?'Press the field, drag to where you want the ball to land, and let go.':'Click the spot on the field where you want the ball to land.')+
-      P(`No clock this time. In real rounds you get ${coarse?5:3} seconds.`)+P('The <b style="color:#4ade80">green ring</b> is the best spot you can see from where you’re looking.'),'Got it'],
+      P(`No clock this time. In real rounds you get ${coarse?5:3} seconds.`)+P('The <b style="color:#4ade80">green ring</b> is the best spot you can see from where you’re looking. It only shows up here in the tutorial.'),'Got it'],
     tempo:['Tutorial · game speed','Now at real tempo',P(`Two more real plays with the real clock: memorize the routes, snap, and get the ball out. At the freeze you have ${coarse?5:3} seconds, then you’re sacked.`)+P('No green ring this time.'),'Show me the routes'],
     done:null}[step];
   if(step==='done'){const r=S.round.res[S.round.i]||{},won=r.diff>=0;
