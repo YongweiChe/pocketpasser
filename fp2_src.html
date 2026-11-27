@@ -308,6 +308,7 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .vsHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .vsHead small{color:var(--gold);font-weight:600}.vsHead h2{font:700 40px/1 "Retro",system-ui,sans-serif;margin:2px 0 4px}.vsHead p{margin:0;font-size:14px}
 #vsClose{min-width:44px;font-size:18px}
+#hbClose{min-width:44px;font-size:18px}.hbBox{max-width:520px}.hbList{overflow:auto;max-height:min(56vh,520px)}.hbList .lb{margin:0}
 #vsQ{font:500 16px "RetroText",system-ui,sans-serif;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:#0a1120;color:var(--ink);width:100%}
 #vsQ:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .vsList{overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;align-content:start;padding:2px}
@@ -537,13 +538,18 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
         </section>
         <nav class="hmModes" aria-label="Game modes">
           <button class="cta" id="go"><span class="ctaMain">Play today’s 6 snaps</span><span class="ctaMeta"><span id="today"></span> · <span id="hmDaily">Not played yet</span></span></button>
-          <p class="hmAlt"><button id="goPractice">Practice</button><button id="goVs">Versus a real QB</button><button id="tutBtn">Tutorial</button><button id="goBled">Drew Bledsoe mode</button></p>
+          <p class="hmAlt"><button id="goPractice">Practice</button><button id="goVs">Versus a real QB</button><button id="tutBtn">Tutorial</button><button id="goBled">Drew Bledsoe mode</button><button id="goBoard" hidden>Leaderboard</button></p>
           <div class="hmSet"><button id="soundPick" aria-pressed="true">Sound: on</button><button id="annPick" aria-pressed="true">Announcer: on</button><button id="keysPick">Controls</button><button id="acctBtn" hidden>Sign in</button></div>
         </nav>
       </div>
       <div class="vsSheet" id="firstQ" hidden role="dialog" aria-modal="true" aria-labelledby="fqH"><div class="vsBox fqBox">
         <small>First time here?</small><h2 id="fqH">Want a quick tutorial?</h2><p class="mute">Three real plays, about two minutes. It shows you how a snap works before your first real round.</p>
         <div class="fqBtns"><button class="go" id="fqYes">Yes, show me</button><button class="ghost" id="fqNo">No, just play</button></div>
+      </div></div>
+      <div class="vsSheet" id="boardSheet" hidden role="dialog" aria-modal="true" aria-labelledby="hbH"><div class="vsBox hbBox">
+        <header class="vsHead"><div><small id="hbDay">Today’s 6</small><h2 id="hbH">Today’s leaderboard</h2><p class="mute" id="hbNote"></p></div><button id="hbClose" aria-label="Close">✕</button></header>
+        <div id="hbList" class="hbList"></div>
+        <div class="fqBtns"><button class="go" id="hbPlay">Play today’s 6</button></div>
       </div></div>
       <div class="vsSheet" id="vsPick" hidden role="dialog" aria-modal="true" aria-labelledby="vsH"><div class="vsBox">
         <header class="vsHead"><div><small>Versus mode</small><h2 id="vsH">Pick your quarterback</h2><p class="mute">Play six of his real snaps and try to make better decisions than he did.</p></div><button id="vsClose" aria-label="Close">✕</button></header>
@@ -2011,6 +2017,7 @@ window.addEventListener('keydown',e=>{
   if(!$('keysSheet').hidden){if(KBW){e.preventDefault();e.stopImmediatePropagation();if(e.key!=='Escape')kbSet(KBW,normKey(e));KBW=null;renderKb();return;}
     if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeKb();return;}if(e.key!=='Tab'&&e.key!=='Enter'&&e.key!==' ')e.stopImmediatePropagation();return;}
   if(e.key==='Escape'&&!$('vsPick').hidden){e.preventDefault();closeVs();return;}
+  if(e.key==='Escape'&&!$('boardSheet').hidden){e.preventDefault();$('boardSheet').hidden=true;return;}
   if(!$('firstQ').hidden){if(e.key==='Escape'){e.preventDefault();$('firstQ').hidden=true;}else if(e.key!=='Tab'&&e.key!=='Enter'&&e.key!==' ')e.stopImmediatePropagation();return;}
   if(S.tutCard&&!PZ&&e.key!=='Escape'){if(normKey(e)===KB.snap||e.key===' '||e.key==='Enter'){e.preventDefault();e.stopImmediatePropagation();if(document.activeElement===$('tutAlt'))$('tutAlt').click();else tutClose();}else if(e.key!=='Tab')e.stopImmediatePropagation();return;}
   if(e.key==='Escape'){if(PZ){e.preventDefault();e.stopImmediatePropagation();closePause();}else if(S.phase!=='idle'&&$('start').hidden){e.preventDefault();e.stopImmediatePropagation();openPause();}return;}
@@ -2019,7 +2026,21 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.phase!==
 $('tutBtn').onclick=()=>{store.set('visited','1');begin('tutorial');};
 $('goBled').onclick=()=>firstThen(bledIntro);
 $('goPractice').onclick=()=>firstThen(()=>begin('practice'));
-$('goVs').onclick=()=>firstThen(openVs);$('vsClose').onclick=()=>closeVs();$('vsQ').oninput=()=>renderVs($('vsQ').value);
+$('goVs').onclick=()=>firstThen(openVs);
+// home: today's board (shown only where a board exists: Supabase configured, or the artifact db)
+function syncBoardLink(){$('goBoard').hidden=!(AUTH.client||LB.db);}
+AUTH.ready.then(syncBoardLink);setTimeout(syncBoardLink,1500);
+async function openBoard(){const sh=$('boardSheet'),list=$('hbList');sh.hidden=false;
+  $('hbDay').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'})+' · Today’s 6';
+  const done=(store.get('dailyDone')||'').split('|')[0]===dayKey();
+  $('hbNote').textContent=AUTH.client&&!AUTH.user?'Sign in and play today’s 6 to get on the board.':'First finished run each day counts.';
+  $('hbPlay').hidden=done;list.innerHTML='<p class="mute">Loading…</p>';
+  let rows;try{rows=await loadBoard();}catch(e){list.innerHTML='<p class="mute">Couldn’t reach the leaderboard right now.</p>';return;}
+  if(!rows||!rows.length){list.innerHTML='<p class="mute">No scores yet today. Be the first.</p>';return;}
+  const top=rows.slice(0,50),mine=rows.find(r=>r.id===LB.me);if(mine&&!top.includes(mine))top.push(mine);
+  list.innerHTML=`<ol class="lb">${top.map(r=>`<li class="${r.id===LB.me?'me':''}"><span class="r">${rows.indexOf(r)+1}</span><span class="i">${esc(String(r.ini||'???').slice(0,AUTH.client?16:3))}</span><span class="w">${r.wins}/6 wins</span><span class="s ${r.score>=0?'pos':'neg'}">${fmt(r.score)}</span></li>`).join('')}</ol>`;}
+$('goBoard').onclick=openBoard;$('hbClose').onclick=()=>{$('boardSheet').hidden=true;};
+$('hbPlay').onclick=()=>{$('boardSheet').hidden=true;$('go').click();};$('vsClose').onclick=()=>closeVs();$('vsQ').oninput=()=>renderVs($('vsQ').value);
 $('vsPick').addEventListener('click',e=>{if(e.target===$('vsPick'))closeVs();});
 $('rsHome').onclick=()=>goHome();
 $('again').onclick=()=>startRound('practice');
