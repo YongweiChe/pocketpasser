@@ -1549,15 +1549,26 @@ async function openMe(){if(!AUTH.user)return;const sh=$('meSheet'),body=$('meBod
       <li><span>Longest Drew Bledsoe run</span><b>${bestBled==null?'—':bestBled+' snaps'}</b></li>
       <li><span>QBs beaten in versus</span><b>${beaten.size}</b></li>
       <li><span>Rounds finished</span><b>${rounds.length}</b></li></ul></div>
-    ${dailyRuns.length?`<div class="meBests meDays"><h3>YOUR TODAY’S 6</h3><ul>${dailyRuns.slice(0,30).map((r,k)=>`<li><button class="meDay" data-k="${k}"${r.res&&r.res.length?'':' disabled title="Play-by-play wasn’t saved for this one"'}><span>${esc(dayLabelOf(r.day))}<small>${r.wins}/${r.n} snaps won</small></span><b class="${r.total>=0?'pos':'neg'}">${fmt(r.total)}</b></button></li>`).join('')}</ul></div>`:''}`;
+    ${dailyRuns.length?`<div class="meBests meDays"><h3>YOUR TODAY’S 6</h3><ul>${dailyRuns.slice(0,30).map((r,k)=>`<li><button class="meDay" data-k="${k}"><span>${esc(dayLabelOf(r.day))}<small>${r.wins}/${r.n} snaps won</small></span><b class="${r.total>=0?'pos':'neg'}">${fmt(r.total)}</b></button></li>`).join('')}</ul></div>`:''}`;
   body.querySelectorAll('.meDay').forEach(b=>b.onclick=()=>{const r=dailyRuns[+b.dataset.k];$('meSheet').hidden=true;showArchive(r);});}
 // reopen a past Today's 6 as its results page (read-only: nothing is saved or posted)
-function showArchive(r){$('start').hidden=true;document.body.classList.remove('home');
+// labels for a play by key (sit / QB / opponent), when the play is loaded in this session
+function labelOfKey(k){const pl=PLAYS.find(p=>p.real&&p.meta&&p.meta.key===k);
+  if(pl)return {sit:ordinal(pl.down)+' & '+(pl.dist>=pl.ytg?'goal':pl.dist),who:pl.qb.name,opp:pl.meta.defName,real:true};
+  const e=BDB.idx&&BDB.idx.find(x=>x[0]===k);   // season plays not loaded yet: [key, QB, offense, defense, down, distance, yards to goal]
+  return e?{sit:ordinal(e[4])+' & '+(e[5]>=e[6]?'goal':e[5]),who:e[1],opp:(typeof TEAMNAME!=='undefined'&&TEAMNAME[e[3]])||e[3],real:true}:null;}
+async function rebuildRes(r){try{const until=new Date(Date.parse(r.created_at)+5000).toISOString();
+    const {data,error}=await withTimeout(AUTH.client.from('snaps').select('play_key,mine,pro,diff,created_at').eq('kind','daily').lte('created_at',until).order('created_at',{ascending:false}).limit(r.n||6),10000);
+    if(error||!data||!data.length)return null;
+    return data.reverse().map((x,i)=>Object.assign({key:x.play_key,diff:+x.diff,mine:+x.mine,pro:+x.pro,sit:'',who:'',opp:'Play '+(i+1),desc:'',real:false},labelOfKey(x.play_key)||{}));}catch(e){return null;}}
+async function showArchive(r){await BDB.ready;if(!r.res||!r.res.length){const rb=await rebuildRes(r);if(!rb){alert('The play-by-play for this day wasn’t saved.');openMe();return;}r.res=rb;}
+  else r.res=r.res.map((x,i)=>Object.assign({sit:'',who:'',opp:'Play '+(i+1),desc:'',real:false},x,(!x.who&&x.key&&labelOfKey(x.key))||{}));
+  $('start').hidden=true;document.body.classList.remove('home');
   S.round={kind:'daily',plays:(r.res||[]).map(()=>-1),i:(r.res||[]).length-1,res:(r.res||[]).map(x=>Object.assign({},x)),qb:null,archive:{day:r.day,ranked:true}};showResults();}
 // scores
 function saveSnap(r,key){if(AUTH.user)AUTH.client.from('snaps').insert({kind:S.round.kind,play_key:key,mine:+r.mine.toFixed(3),pro:+r.pro.toFixed(3),diff:+r.diff.toFixed(3)}).then(()=>{},()=>{});}
 function saveRound(kind,total,wins,n,qb,res){if(!AUTH.user)return;const r3=v=>Math.round((+v||0)*1000)/1000;
-  const rs=res?res.filter(Boolean).map(r=>({diff:r3(r.diff),mine:r3(r.mine),pro:r3(r.pro),sit:r.sit||'',who:r.who||'',opp:r.opp||'',desc:r.desc||'',real:!!r.real})):null;
+  const rs=res?res.filter(Boolean).map(r=>({key:r.key||'',diff:r3(r.diff),mine:r3(r.mine),pro:r3(r.pro),sit:r.sit||'',who:r.who||'',opp:r.opp||'',desc:r.desc||'',real:!!r.real})):null;
   AUTH.client.from('rounds').insert({kind,total:+total.toFixed(3),wins,n,qb:qb||null,day:dayKeyISO(),res:rs}).then(()=>{},()=>{});}
 const dayKeyISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 // shared leaderboard: Supabase when configured, else the claude.ai artifact db; absent otherwise
@@ -1667,7 +1678,7 @@ function anTicks(lo,hi){const span=hi-lo,step=[.25,.5,1,2,5].find(s=>span/s<=6)|
 function anDumb(res,W){const vals=res.flatMap(r=>[r.mine,r.pro,0]);let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.06||.5;lo-=pad;hi+=pad;
   const X=v=>((v-lo)/(hi-lo)*100).toFixed(2)+'%';
   const rows=res.map((r,k)=>{const a=Math.min(r.mine,r.pro),b=Math.max(r.mine,r.pro);
-    return `<div class="dRow" data-k="${k}" aria-label="Play ${k+1}: you ${fmt(r.mine)}, ${esc(W)} ${fmt(r.pro)}"><div class="dLab">${k+1}. ${esc(r.real?r.who.split(' ').pop()+' vs '+r.opp.split(' ').pop():r.opp)}<small>${esc(r.sit)} · ${esc(r.desc)}</small></div>
+    return `<div class="dRow" data-k="${k}" aria-label="Play ${k+1}: you ${fmt(r.mine)}, ${esc(W)} ${fmt(r.pro)}"><div class="dLab">${k+1}. ${esc(r.real?r.who.split(' ').pop()+' vs '+r.opp.split(' ').pop():r.opp)}<small>${esc(r.sit||'')}${r.desc?' · '+esc(r.desc):''}</small></div>
       <div class="dTrack"><i class="z" style="left:${X(0)}"></i><i class="seg" style="left:${X(a)};width:calc(${X(b)} - ${X(a)})"></i><i class="pt pro" style="left:${X(r.pro)}"></i><i class="pt you" style="left:${X(r.mine)}"></i></div>
       <div class="dDiff ${r.diff>=0?'pos':'neg'}">${fmt(r.diff)}</div></div>`;}).join('');
   const ax=`<div class="dAxis"><div></div><div>${anTicks(lo,hi).map(v=>`<span style="left:${X(v)}">${v===0?'0 EPA':(v>0?'+':'')+v}</span>`).join('')}</div><div></div></div>`;
@@ -1809,7 +1820,7 @@ function finishReal(){
   S.heat=S.heat||heatmap(pl);const mine=P.ev.epa,diff=mine-pro.epa;S.lastPro=pro;S.lastMine=mine;S.results[S.pi]=diff;score();
   const last=!!(S.round&&S.round.i===S.round.plays.length-1),tot=Object.values(S.results).reduce((a,b)=>a+b,0);
   if(S.round){const thrown=!(P.sack||P.away);   // everything the end-of-round analytics page needs about this snap
-    S.round.res[S.round.i]={title:pl.real?pl.qb.name+' vs '+pl.meta.defName:pl.name,desc:describe(P),diff,mine,pro:pro.epa,
+    S.round.res[S.round.i]={key:pl.real?pl.meta.key:'drill',title:pl.real?pl.qb.name+' vs '+pl.meta.defName:pl.name,desc:describe(P),diff,mine,pro:pro.epa,
       sit:ordinal(pl.down)+' & '+(pl.dist>=pl.ytg?'goal':pl.dist),who:pl.real?pl.qb.name:'Drill',opp:pl.real?pl.meta.defName:pl.name,real:!!pl.real,
       thrown,kind:P.sack?'sack':P.away?'away':P.kind,pC:thrown?P.ev.pC:0,pI:thrown?P.ev.pI:0,air:thrown&&P.ev.S?P.ev.S.y:null,type:P.type,early:earlyBy(P),
       proPC:pro.pC,proPI:pro.pI,proAir:pl.pro.spot.y,proType:pl.pro.type,proKind:pl.pro.result.kind,proText:pl.real?pl.pro.text:''};
