@@ -76,9 +76,11 @@ shutil.rmtree(pub, ignore_errors=True)
 os.makedirs(os.path.join(pub, 'audio', 'announcer'))
 public_page = src.replace('/*MODEL*/', ix[ms:me], 1).replace('/*PLAN*/', plan, 1)
 public_page = public_page.replace('/*CADENCE*/', 'const CADENCE_FILES=[];', 1).replace('/*ANNOUNCER*/', ann_js(False), 1).replace('/*MUSIC*/', music_js(False), 1)
+public_page = public_page.replace("fetch('data/bdb_plays/index.json')", "Promise.resolve({ok:false})", 1)   # the site never has the season plays: don't ask (a 404 on every visit)
 open(os.path.join(pub, 'index.html'), 'w').write(public_page)
 shutil.copy(p('real_plays.json'), pub)
 for f in os.listdir(p('site')): shutil.copy(p(os.path.join('site', f)), pub)   # favicon, touch icon, link-preview image
+shutil.copy(p('site/favicon-32.png'), os.path.join(pub, 'favicon.ico'))   # browsers and bots still ask for /favicon.ico
 for v in ann_files.values(): shutil.copy(p(v), os.path.join(pub, v))
 if music: os.makedirs(os.path.join(pub, 'audio', 'music'), exist_ok=True); shutil.copy(p(music), os.path.join(pub, music))
 
