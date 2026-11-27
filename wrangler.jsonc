@@ -1,0 +1,7 @@
+// Cloudflare Worker that serves pocketpasser.io: static files only, from public/ (written by `python3 build.py`).
+// Build command in the Cloudflare dashboard (Worker > Settings > Build): python3 build.py   Deploy command: npx wrangler deploy
+{
+  "name": "pocketpasser",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "./public" }
+}
