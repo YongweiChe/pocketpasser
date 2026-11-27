@@ -542,6 +542,11 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
   <div class="hud" id="reveal" hidden><div class="rv"><div class="rvBadge"><b></b></div><div class="rvBody"><small>The real play</small><h2></h2><p class="rvTeam"></p><p class="rvTgt"></p><div class="rvCmp"></div></div></div></div>
   <div class="hud glass" id="legend" hidden></div>
   <div id="ddFlash" aria-hidden="true"></div>
+  <div class="vsSheet" id="unSheet" hidden role="dialog" aria-modal="true" aria-labelledby="unH" style="z-index:30"><div class="vsBox fqBox">
+    <small>Your account</small><h2 id="unH">Pick a username</h2><p class="mute" id="unP"></p>
+    <form id="unForm" class="unForm"><input id="unIn" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Username"><p id="unMsg" class="unMsg" aria-live="polite"></p>
+    <div class="fqBtns"><button class="go" id="unGo" type="submit">Save</button><button class="ghost" id="unSkip" type="button">Skip for now</button><button class="ghost" id="unCancel" type="button" hidden>Cancel</button></div></form>
+  </div></div>
   <div class="vsSheet" id="wall" hidden role="dialog" aria-modal="true" aria-labelledby="wallH" style="z-index:25"><div class="vsBox fqBox">
     <small>Free rounds used</small><h2 id="wallH">Sign in to keep playing</h2><p class="mute" id="wallP">You’ve played your 2 free rounds. Sign in with Google to keep playing, track your stats and get on today’s leaderboard. You’ll pick up right where you left off.</p>
     <div class="fqBtns"><button class="go" id="wallGo">Sign in with Google</button><button class="ghost" id="wallHome">Home</button></div></div></div>
@@ -568,11 +573,6 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
       <div class="vsSheet" id="firstQ" hidden role="dialog" aria-modal="true" aria-labelledby="fqH"><div class="vsBox fqBox">
         <small>First time here?</small><h2 id="fqH">Want a quick tutorial?</h2><p class="mute">Three real plays, about two minutes. It shows you how a snap works before your first real round.</p>
         <div class="fqBtns"><button class="go" id="fqYes">Yes, show me</button><button class="ghost" id="fqNo">No, just play</button></div>
-      </div></div>
-      <div class="vsSheet" id="unSheet" hidden role="dialog" aria-modal="true" aria-labelledby="unH" style="z-index:30"><div class="vsBox fqBox">
-        <small>Your account</small><h2 id="unH">Pick a username</h2><p class="mute" id="unP"></p>
-        <form id="unForm" class="unForm"><input id="unIn" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Username"><p id="unMsg" class="unMsg" aria-live="polite"></p>
-        <div class="fqBtns"><button class="go" id="unGo" type="submit">Save</button><button class="ghost" id="unSkip" type="button">Skip for now</button><button class="ghost" id="unCancel" type="button" hidden>Cancel</button></div></form>
       </div></div>
       <div class="vsSheet" id="meSheet" hidden role="dialog" aria-modal="true" aria-labelledby="meH"><div class="vsBox meBox">
         <header class="vsHead"><div><small id="meSince">Your career</small><h2 id="meH">Player</h2><button class="unEdit" id="meRename">Change username</button><p class="meRank" id="meRank"></p></div><button id="meClose" aria-label="Close">✕</button></header>
@@ -1466,7 +1466,14 @@ AUTH.ready=(async()=>{if(!SUPA.url||!SUPA.key)return;
 // AUTH.named resolves once the player has a username (at once if they already do), so play resumes after picking one.
 function setUser(u){const was=AUTH.user&&AUTH.user.id;AUTH.user=u||null;LB.me=u?u.id:null;LB.canWrite=!!u;
   if(!u){AUTH.name='';AUTH.named=null;syncAcct();return;}
-  if(u.id!==was){AUTH.name='';syncAcct();AUTH.named=loadUsername(u);AUTH.named.then(()=>resumeAfterSignIn());}}
+  if(u.id!==was){AUTH.name='';syncAcct();AUTH.named=loadUsername(u);
+    AUTH.named.then(()=>{$('wall').hidden=true;const c=WALL_CONT;WALL_CONT=null;if(c){sessionStorage.removeItem('qbcam.resume');c();}else resumeAfterSignIn();});}}
+// a popup sign-in can't always message back (Google's pages cut the popup off from this window), so also watch for the
+// session appearing: a broadcast from auth.html, the session being written to storage, or coming back to this window
+async function checkSignedIn(){if(!AUTH.client||AUTH.user)return;try{const {data}=await AUTH.client.auth.getSession();const u=data.session&&data.session.user;if(u)setUser(u);}catch(e){}}
+try{new BroadcastChannel('pp-auth').onmessage=()=>checkSignedIn();}catch(e){}
+addEventListener('storage',e=>{if(e.key&&/^sb-.*-auth-token$/.test(e.key)&&e.newValue)checkSignedIn();});
+addEventListener('focus',()=>checkSignedIn());document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkSignedIn();});
 async function loadUsername(u){let name=null;try{const {data}=await AUTH.client.from('profiles').select('username').eq('id',u.id).maybeSingle();name=data&&data.username;}catch(e){}
   if(!name)name=await pickUsername(u,true);AUTH.name=name||'';syncAcct();return AUTH.name;}
 let UN_DONE=null;
@@ -1497,14 +1504,13 @@ function syncAcct(){const b=$('acctBtn');if(!b)return;b.hidden=!AUTH.client;
 // Google sign-in in a popup: the game stays put. auth.html (same origin) finishes the sign-in and tells us; if the popup is
 // blocked, fall back to a full-page redirect (the round is saved and resumes after the redirect back).
 async function signIn(){if(!AUTH.client)return;
+  try{localStorage.setItem('qbcam.authPopupAt',String(Date.now()));}catch(e){}
   const w=window.open('','ppauth','popup,width=500,height=650');if(w)try{w.document.write('<body style="background:#070d18;color:#e8efe9;font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0">Opening Google…</body>');}catch(e){}
   const back=location.pathname+location.search;
   const {data,error}=await AUTH.client.auth.signInWithOAuth({provider:'google',options:{skipBrowserRedirect:true,redirectTo:new URL('auth.html?back='+encodeURIComponent(back),location.href).href}});
   if(error||!data||!data.url){if(w)w.close();return;}
-  if(w&&!w.closed)w.location.href=data.url;else{saveResume();location.href=data.url;}}
-window.addEventListener('message',async e=>{if(e.origin!==location.origin||!e.data||e.data.pp!=='auth'||!AUTH.client)return;
-  const {data}=await AUTH.client.auth.getSession();const u=data.session&&data.session.user;if(!u)return;
-  sessionStorage.removeItem('qbcam.resume');setUser(u);$('wall').hidden=true;const c=WALL_CONT;WALL_CONT=null;if(AUTH.named)await AUTH.named;if(c)c();});
+  if(w&&!w.closed)w.location.href=data.url;else{try{localStorage.removeItem('qbcam.authPopupAt');}catch(e){}saveResume();location.href=data.url;}}
+window.addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.pp==='auth')checkSignedIn();});
 const guestLocked=()=>!!AUTH.client&&!AUTH.user&&+(store.get('guestRounds')||0)>=GUEST_ROUNDS;
 let WALL_CONT=null;   // what the wall interrupted: run it once the player has signed in (popup flow)
 function showWall(cont){WALL_CONT=cont||null;$('wall').hidden=false;setTimeout(()=>$('wallGo').focus({preventScroll:true}),30);}

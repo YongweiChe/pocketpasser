@@ -15,7 +15,12 @@ try{const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/su
   // what counts is whether a session exists now (the code can already have been used, e.g. a reload or a second load of this page)
   const {data}=await c.auth.getSession();ok=!!(data&&data.session);if(!ok&&err)window.__err=err;}catch(e){console.error(e);window.__err=String(e);}
 const safeBack=back.startsWith('/')&&!back.startsWith('//')?back:'./';
-if(window.opener&&!window.opener.closed){try{window.opener.postMessage({pp:'auth',ok},location.origin);}catch(e){}
-  document.getElementById('m').textContent=ok?'Signed in. You can close this window.':'Sign-in didn’t finish'+(window.__err?' ('+window.__err+')':'')+'. Close this window and try again.';setTimeout(()=>window.close(),ok?150:2500);}
+let popAt=0;try{popAt=+localStorage.getItem('qbcam.authPopupAt')||0;localStorage.removeItem('qbcam.authPopupAt');}catch(e){}
+const isPopup=!!window.opener||Date.now()-popAt<15*60*1000;
+if(ok){try{new BroadcastChannel('pp-auth').postMessage('signed-in');}catch(e){}}   // tells the game window even when Google cut the opener link
+if(window.opener&&!window.opener.closed){try{window.opener.postMessage({pp:'auth',ok},location.origin);}catch(e){}}
+const m=document.getElementById('m');
+if(isPopup){m.textContent=ok?'Signed in! You can close this window and go back to the game.':'Sign-in didn’t finish'+(window.__err?' ('+window.__err+')':'')+'. Close this window and try again.';
+  if(ok)setTimeout(()=>window.close(),250);}
 else location.replace(safeBack);
 </script></body></html>
