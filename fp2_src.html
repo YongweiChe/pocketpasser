@@ -327,7 +327,18 @@ body.reviewing #prog,body.reviewing #res,body.reviewing #cap{display:none}
 .meDays ul{max-height:260px;overflow:auto}.meDays li{padding:0;background:none}.meDay{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;background:rgba(255,255,255,.035);cursor:pointer}
 .meDay:hover:not(:disabled),.meDay:focus-visible{background:rgba(245,197,24,.12);outline:1px solid rgba(245,197,24,.5)}.meDay:disabled{cursor:default;opacity:.55}
 .meDay small{display:block;color:var(--mute);font-size:13px}.meDay b{font-family:"Retro",system-ui,sans-serif;font-size:15px}.meDay b.pos{color:#4ade80}.meDay b.neg{color:#ff6b6b}
-.gBtn{min-height:48px;margin:16px 0 4px;display:flex;justify-content:center}.gBox{text-align:left}
+.gBox{position:relative;max-width:420px;background:#0d1626;padding:24px 24px 18px;text-align:left}
+.gX{position:absolute;top:10px;right:10px;min-width:40px;min-height:40px;font-size:16px}
+.gHead{display:flex;align-items:center;gap:14px;margin-right:40px}.gHead img{image-rendering:pixelated;flex:none}
+.gHead small{display:block;color:var(--gold);font:600 13px "RetroText",system-ui,sans-serif;letter-spacing:.04em}
+.gHead h2{margin:2px 0 0;font:700 22px/1.2 "Retro",system-ui,sans-serif;color:var(--ink)}
+.gPerks{list-style:none;margin:18px 0 20px;padding:0;display:grid;gap:8px;font-size:17px;color:#c9d4cd}
+.gPerks li{position:relative;padding-left:22px}.gPerks li::before{content:"";position:absolute;left:2px;top:.5em;width:8px;height:8px;background:var(--gold);box-shadow:2px 2px 0 #000}
+.gPerks b{color:var(--ink);font-weight:600}
+.gSlot{padding:10px;background:#070d18;box-shadow:0 -4px 0 0 var(--gold),0 4px 0 0 var(--gold),-4px 0 0 0 var(--gold),4px 0 0 0 var(--gold),8px 8px 0 4px rgba(0,0,0,.6)}
+.gBtn{min-height:44px;display:flex;justify-content:center;align-items:center;color-scheme:light}.gBtn iframe{color-scheme:light}   /* same scheme as Google's frame, or the browser paints a white backing behind it */
+.gBox .unMsg{margin:8px 0 0;min-height:0}.gBox .unMsg:empty{display:none}
+.gFine{margin:16px 0 0;font-size:13px;color:var(--mute)}.gFine a{color:var(--mute)}.gFine a:hover{color:var(--gold)}
 .unForm input{width:100%;box-sizing:border-box;margin-top:6px;padding:10px 12px;font:600 20px "Retro",system-ui,sans-serif;background:#070d18;color:var(--ink);border:2px solid var(--line)}
 .unMsg{min-height:1.4em;margin:6px 0 0;font-size:14px;color:var(--mute)}.unMsg.good{color:#4ade80}.unMsg.bad{color:#ff6b6b}
 .unEdit{margin-top:4px;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--mute);font:14px "RetroText",system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.unEdit:hover{color:var(--gold)}.meBtns{justify-content:space-between}
@@ -550,10 +561,12 @@ body.presnap.bledsoe #sit>:not(#hot){display:none!important}body.presnap.bledsoe
     <form id="unForm" class="unForm"><input id="unIn" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Username"><p id="unMsg" class="unMsg" aria-live="polite"></p>
     <div class="fqBtns"><button class="go" id="unGo" type="submit">Save</button><button class="ghost" id="unSkip" type="button">Skip for now</button><button class="ghost" id="unCancel" type="button" hidden>Cancel</button></div></form>
   </div></div>
-  <div class="vsSheet" id="gSheet" hidden role="dialog" aria-modal="true" aria-labelledby="gH" style="z-index:31"><div class="vsBox fqBox gBox">
-    <small>Pocket Passer</small><h2 id="gH">Sign in</h2><p class="mute">Save your stats and get on the leaderboard. Only your username is ever shown.</p>
-    <div id="gBtn" class="gBtn"></div><p class="unMsg" id="gMsg" aria-live="polite"></p>
-    <div class="fqBtns"><button class="ghost" id="gCancel">Not now</button></div>
+  <div class="vsSheet" id="gSheet" hidden role="dialog" aria-modal="true" aria-labelledby="gH" style="z-index:31"><div class="vsBox gBox">
+    <button class="gX" id="gCancel" aria-label="Not now">✕</button>
+    <div class="gHead"><img src="__FOOTBALL__" alt="" width="40" height="40"><div><small>Pocket Passer</small><h2 id="gH">Join the roster</h2></div></div>
+    <ul class="gPerks"><li>Get on <b>today’s leaderboard</b></li><li>Track your <b>career stats</b> and <b>streak</b></li><li>Pick a <b>username</b>. Your real name stays private</li></ul>
+    <div class="gSlot"><div id="gBtn" class="gBtn"></div></div><p class="unMsg" id="gMsg" aria-live="polite"></p>
+    <p class="gFine">Free. We only use your Google account to sign you in. <a href="privacy" target="_blank" rel="noopener">Privacy</a></p>
   </div></div>
   <div class="vsSheet" id="wall" hidden role="dialog" aria-modal="true" aria-labelledby="wallH" style="z-index:25"><div class="vsBox fqBox">
     <small>Free rounds used</small><h2 id="wallH">Sign in to keep playing</h2><p class="mute" id="wallP">You’ve played your 2 free rounds. Sign in with Google to keep playing, track your stats and get on today’s leaderboard. You’ll pick up right where you left off.</p>
@@ -1542,7 +1555,7 @@ async function signIn(){if(!AUTH.client)return;track('Sign-in opened',{from:PEND
       try{const {data,error}=await AUTH.client.auth.signInWithIdToken({provider:'google',token:r.credential,nonce:raw});
         if(error)throw error;sh.hidden=true;const u=data&&(data.user||data.session&&data.session.user);if(u)setUser(u);else checkSignedIn();}
       catch(e){msg.textContent='Sign-in didn’t work'+(e&&e.message?' ('+e.message+')':'')+'. Try again.';msg.className='unMsg bad';reportErr(e,'gsi');}}});
-  $('gBtn').innerHTML='';gid.renderButton($('gBtn'),{type:'standard',theme:'filled_black',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:Math.min(320,innerWidth-96)});}
+  $('gBtn').innerHTML='';gid.renderButton($('gBtn'),{type:'standard',theme:'filled_black',size:'large',text:'continue_with',shape:'square',logo_alignment:'left',width:Math.min(340,innerWidth-110)});}
 $('gCancel').onclick=()=>{$('gSheet').hidden=true;};
 // fallback: Supabase's Google OAuth in a popup. The game stays put. auth.html (same origin) finishes the sign-in and tells us; if the popup is
 // blocked, fall back to a full-page redirect (the round is saved and resumes after the redirect back).

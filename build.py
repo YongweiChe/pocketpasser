@@ -15,7 +15,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 p = lambda name: os.path.join(HERE, name)
 
 ix = open(p('index.html')).read()
+import base64
 src = open(p('fp2_src.html')).read()
+# the pixel football, inlined where the page shows it (works from file:// and the local server too)
+if os.path.exists(p('site/favicon.svg')):
+    src = src.replace('src="__FOOTBALL__"', 'src="data:image/svg+xml;base64,' + base64.b64encode(open(p('site/favicon.svg'), 'rb').read()).decode() + '"')
 
 ms = ix.index("const W=53.33")
 me = ix.index('  return{cells,best};\n}', ms) + len('  return{cells,best};\n}')
