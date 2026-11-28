@@ -861,7 +861,7 @@ AU.boot();window.__AU=AU;
 /* ======================= SCENE ======================= */
 const host=$('game');
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(coarse?1.5:2,window.devicePixelRatio||1));renderer.shadowMap.enabled=false;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));   // phones used to stop at 1.5x and looked soft; adaptRes still steps a slow phone downrenderer.shadowMap.enabled=false;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;renderer.toneMappingExposure=1.05;host.prepend(renderer.domElement);
 const scene=new THREE.Scene();scene.fog=new THREE.Fog(0x0b1626,90,260);
 {const c=document.createElement('canvas');c.width=4;c.height=256;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,256);
@@ -2106,6 +2106,11 @@ cv.addEventListener('pointerleave',()=>{if(!down)S.ptr=null;});
    At the freeze the view is locked, so any press aims straight away. The aim point sits a little above the finger so you can see it;
    a finger past the field pins the aim to the nearest in-bounds spot; drag down onto the bottom bar and let go to cancel. Mouse keeps click-to-throw. */
 const TOUCH_UP=56,HOLD_MS=230,LOOK_SENS=2.4,isTouch=e=>e.pointerType!=='mouse';
+// a press that began on the previous screen, or in the first 250 ms of this one, never snaps the ball, throws or moves on:
+// a tap meant for the last screen (next play, look around) used to land as a throw the instant the freeze began
+const PH={p:'idle',at:0},TAP_GRACE=250;
+function phaseAt(){if(S.phase!==PH.p){PH.p=S.phase;PH.at=performance.now();}return PH.at;}
+const stale=d=>d.t0<phaseAt()+TAP_GRACE;
 // phones: the aim never vanishes. A finger past the field pins the ball to the nearest in-bounds spot; dragging down onto the bottom bar cancels.
 function floorClamp(cx,cy){const r=renderer.domElement.getBoundingClientRect();ndc.set((cx-r.left)/r.width*2-1,-((cy-r.top)/r.height)*2+1);ray.setFromCamera(ndc,cam);
   const yMax=Math.min(play().ytg+10,58);let f;
@@ -2119,15 +2124,18 @@ function touchAim(x,y){if(cancelZone(y)){S.aim=null;S.aimSnap=null;banner('Let g
 function clearRead(){if(S.read>=0){S.read=-1;$('prog').querySelectorAll('button').forEach(b=>b.classList.remove('on'));}}
 cv.addEventListener('pointerdown',e=>{down={x0:e.clientX,y0:e.clientY,lx:e.clientX,ly:e.clientY,mode:null,t0:performance.now()};if(!isTouch(e))return;
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
-  if(S.phase==='decide'){down.mode='aim';touchAim(e.clientX,e.clientY);}
+  if(S.phase==='decide'){if(stale(down))down.mode='dead';else{down.mode='aim';touchAim(e.clientX,e.clientY);}}   // dead: too early to count; it becomes an aim if the finger is still down after the grace period
   else if(S.phase==='run'){const d=down;d.holdTO=setTimeout(()=>{if(down!==d||d.mode||S.phase!=='run')return;if(!canEarly()){S.nudge=performance.now();return;}
     d.mode='aim';touchAim(d.lx,d.ly);if(navigator.vibrate)try{navigator.vibrate(12);}catch(_){}},HOLD_MS);}});
 cv.addEventListener('pointermove',e=>{const d=down;if(!d||!isTouch(e))return;const dx=e.clientX-d.lx;d.lx=e.clientX;d.ly=e.clientY;
+  if(d.mode==='dead'){if(S.phase==='decide'&&performance.now()>=phaseAt()+TAP_GRACE)d.mode='aim';else return;}
   if(d.mode==='aim'){touchAim(e.clientX,e.clientY);return;}
   if(S.phase==='run'&&(d.mode==='look'||Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>12)){if(d.mode!=='look'){d.mode='look';clearTimeout(d.holdTO);clearRead();}
     S.yaw=Math.max(-1.45,Math.min(1.45,S.yaw-dx*LOOK_SENS/Math.max(320,innerWidth)));}});
 cv.addEventListener('pointercancel',()=>{if(down)clearTimeout(down.holdTO);down=null;S.aim=null;});
 cv.addEventListener('pointerup',e=>{if(!isTouch(e))return;const d=down;down=null;if(!d)return;clearTimeout(d.holdTO);
+  if(d.mode==='dead'){if(S.phase==='decide'&&performance.now()>=phaseAt()+TAP_GRACE&&performance.now()-d.t0>=300)d.mode='aim';else{S.aim=null;return;}}
+  if(stale(d)&&d.mode!=='aim'&&S.phase!=='cine'&&S.phase!=='throw'){S.aim=null;return;}
   const tap=Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<12&&performance.now()-d.t0<300&&d.mode!=='look';
   if(tap&&!cancelZone(e.clientY)&&(S.phase==='decide'||(S.phase==='run'&&canEarly()))){const f=floorClamp(e.clientX,e.clientY);S.aim=null;   // tap = throw right there
     startThrow(S.phase==='run'?makePlan(f,S.type,null,S.t):makePlan(f,S.type,null),true);return;}
@@ -2138,6 +2146,7 @@ cv.addEventListener('pointerup',e=>{if(!isTouch(e))return;const d=down;down=null
   if(S.phase==='done'&&performance.now()-(S.doneAt||0)>500){snap();return;}   // tap anywhere on the field = next play (phones have no Space)
   if(S.phase==='run')S.nudge=performance.now();});
 cv.addEventListener('pointerup',e=>{if(isTouch(e))return;const d=down;down=null;if(!d||Math.hypot(e.clientX-d.x0,e.clientY-d.y0)>10)return;
+  if(stale(d)&&S.phase!=='cine'&&S.phase!=='throw'&&S.phase!=='run')return;
   if(S.phase==='run'){if(!canEarly()){S.nudge=performance.now();return;}
     const a=aimPick(e.clientX,e.clientY);if(!a)return;S.pend=null;S.aim=null;startThrow(makePlan(a.f,S.type,null,S.t),true);return;}
   if(S.phase==='pre'){snap();return;}if(S.phase==='cine'||(S.phase==='throw'&&S.plan&&S.plan.cineOn)){skipCine();return;}
@@ -2469,7 +2478,7 @@ function adaptRes(now,ms){if(document.hidden||ms>250||ms<=0)return;AR.ema+=(ms-A
 // the loop schedules its next frame first: an error in one frame is reported and skipped instead of freezing the game
 // (players saw a frozen field with no text when a frame threw once)
 function loop(){requestAnimationFrame(loop);try{frame();}catch(e){reportErr(e,'frame');}}
-function frame(){const now=performance.now();adaptRes(now,now-last);const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;   // one clock for everything (deadlines are set with performance.now())
+function frame(){const now=performance.now();phaseAt();adaptRes(now,now-last);const dt=Math.min(.05,(now-last)/1000);last=now;let sdt=0;   // one clock for everything (deadlines are set with performance.now())
   if(S.paused)return;   // Esc menu: the play is frozen; closePause() shifts the deadlines
   if(S.phase!=='idle'){const pl=play();
     if((S.tutCard&&S.tutCard.startsWith('pre'))||S.tutGap)S.memoEnd=Math.max(S.memoEnd,now+12000);
