@@ -396,6 +396,7 @@ body.resultsOn #sit,body.resultsOn #controls,body.resultsOn #badge,body.resultsO
 /* scramble plays (the real QB threw on the run): a pre-snap tag says the throw clock is shorter */
 #scr{left:50%;top:27%;transform:translateX(-50%);text-align:center;pointer-events:none;z-index:5;padding:12px 18px 10px;background:rgba(24,8,10,.86);border:3px solid #ff6b6b;box-shadow:5px 5px 0 #000;transition:opacity .2s;width:max-content;max-width:92vw}
 #scr[hidden]{display:none}body.ddOn #scr{opacity:0}
+@media(max-height:500px){#scr{left:12px;top:12px;transform:none;padding:8px 12px 7px;max-width:34vw;text-align:left}#scr b{font-size:13px}#scr span{font-size:17px;margin-top:5px}}   /* phones held sideways: top-left corner, clear of the countdown and the routes */
 #scr b{display:block;font:400 clamp(15px,2.3vw,26px)/1.2 "Retro",system-ui,sans-serif;color:#ff6b6b;text-transform:uppercase;letter-spacing:.04em;text-shadow:3px 3px 0 #000}
 #scr span{display:block;margin-top:8px;font:700 clamp(18px,2.1vw,26px)/1.1 "RetroText",system-ui,sans-serif;color:#fff}
 #cd{transition:opacity .2s}body.ddOn #cd{opacity:0}   /* the down & distance flash plays alone: a big "10" next to the countdown read as two timers */
