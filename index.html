@@ -467,7 +467,7 @@ function describe(P){
   const pl=play();
   if(P.sack)return'Sacked · −7 yards';if(P.away)return'Thrown away';
   if(P.kind==='int')return P.sub==='tip'?'Tipped and intercepted':'Intercepted';
-  if(P.kind==='incomplete')return{miss:'Incomplete · '+({over:'overthrown',behind:'thrown behind',short:'underthrown',wide:'out of reach'}[P.ev&&P.ev.miss]||'out of reach'),pbu:'Incomplete · broken up',tip:'Incomplete · batted at the line of scrimmage',drop:'Incomplete · dropped',away:'Thrown away'}[P.sub]||'Incomplete';
+  if(P.kind==='incomplete')return{miss:'Incomplete · '+({over:'overthrown',behind:'thrown behind',short:'underthrown',wide:'out of reach'}[P.ev&&P.ev.miss]||'out of reach'),pbu:'Incomplete · broken up',tip:'Incomplete · batted at the line of scrimmage',drop:'Incomplete · just off target',away:'Thrown away'}[P.sub]||'Incomplete';
   if(P.gain>=pl.ytg)return'Touchdown!';
   return'Complete · '+(P.gain>=0?'+':'')+P.gain+' yards'+(P.gain>=pl.dist?' · first down':'');
 }

@@ -673,9 +673,9 @@ function bledScene(paper,cards,onDone,end){const el=$('bled'),pp=el.querySelecto
   el.classList.toggle('end',!!end);pp.querySelector('.pdate').textContent=paper.date;pp.querySelector('.head').textContent=paper.head;pp.querySelector('.deck').textContent=paper.deck;
   st.classList.remove('on');pp.style.animation='none';void pp.offsetWidth;pp.style.animation='';el.hidden=false;
   setTimeout(()=>{if(!el.hidden&&H.started!==false)try{AU.thud(0,.9);}catch(e){}},600);
-  let k=0;const show=()=>{const c=cards[k];st.querySelector('small').textContent=c[0];st.querySelector('h2').textContent=c[1];st.querySelector('.sBody').innerHTML=c[2].map(t=>`<p>${t}</p>`).join('');
+  let k=0;const show=()=>{const c=cards[k];if(!c||el.hidden)return;st.querySelector('small').textContent=c[0];st.querySelector('h2').textContent=c[1];st.querySelector('.sBody').innerHTML=c[2].map(t=>`<p>${t}</p>`).join('');
     $('bledOk').textContent=c[3];$('bledAlt').hidden=!c[4];if(c[4])$('bledAlt').textContent=c[4];st.classList.add('on');setTimeout(()=>$('bledOk').focus({preventScroll:true}),30);};
-  $('bledOk').onclick=()=>{if(++k<cards.length){st.classList.remove('on');setTimeout(show,250);}else{el.hidden=true;onDone('ok');}};
+  $('bledOk').onclick=()=>{if(!st.classList.contains('on'))return;/* a double tap used to skip past the last card and crash the queued show() (error report) */if(++k<cards.length){st.classList.remove('on');setTimeout(show,250);}else{el.hidden=true;onDone('ok');}};
   $('bledAlt').onclick=()=>{el.hidden=true;onDone('alt');};
   setTimeout(show,1500);}
 function bledIntro(){const best=+(store.get('bledsoe')||0);
@@ -1902,13 +1902,13 @@ function impactSfx(P){if(!P.replay)ANN.say(annKey(P));if(P.kind==='complete'){AU
   else if(P.kind==='int'){AU.thud(0,.5);AU.groan();AU.whistle(1.8);}
   else{if(P.sub==='pbu'||P.sub==='tip')AU.thud(0,.35);AU.groan();AU.whistle(1);}}
 const tbOf=P=>P.sub==='tip'?P.ev.T+P.ev.laneU*P.ev.fl:P.ev.tb;
-const CAP={catch:'Caught',td:'Touchdown!',dive:'Diving catch',int:'Picked off',pbu:'Broken up',drop:'Dropped',miss:'Overthrown',tip:'Batted down',sack:'Sacked'};
+const CAP={catch:'Caught',td:'Touchdown!',dive:'Diving catch',int:'Picked off',pbu:'Broken up',drop:'Missed throw',miss:'Overthrown',tip:'Batted down',sack:'Sacked'};
 function showCap(P){const pl=play();let sub='';const id=P.ev&&P.ev.r?(P.ev.r.label||P.ev.r.id):'';
   if(P.cine==='catch'||P.cine==='dive')sub=id+' · '+(P.gain>=0?'+':'')+P.gain+' yards'+(P.gain>=pl.dist?' · first down':'');
   else if(P.cine==='td')sub=id+' · '+P.gain+' yards';
   else if(P.cine==='int'){const d=P.sub==='tip'?P.ev.laneD:P.ev.pd;sub='#'+(d.num||NUM[d.key]||'')+' jumps the throw';}
   else if(P.cine==='pbu')sub='#'+(P.ev.pd.num||NUM[P.ev.pd.key]||'')+' gets a hand on it';
-  else if(P.cine==='drop')sub='Right through '+id+"'s hands";
+  else if(P.cine==='drop')sub='Just off '+id+"'s fingertips";   // the model's 'drop' is the leftover incompletion on a reachable ball: mostly a slightly inaccurate throw, so it's shown as a missed throw, not a receiver's drop (player feedback)
   else if(P.cine==='miss')sub={over:'Sailed past '+id,behind:id+' couldn\'t get back to it',short:'Died in front of '+id,wide:'Nobody could get there'}[P.ev.miss]||'Nobody could get there';
   else if(P.cine==='tip')sub='Knocked down short of the receiver';
   else if(P.cine==='sack')sub='−7 yards';
@@ -1980,7 +1980,7 @@ function ball3D(){
   const p={x:lerp(ev.qb.x,P.spot.x,uf),y:lerp(ev.qb.y,P.spot.y,uf)},h=hAt(uf,ev.fl,P.type);
   if(t<=tEnd)return{p,h,air:true};
   const d=dist(ev.qb,P.spot),dx=(P.spot.x-ev.qb.x)/d,dy=(P.spot.y-ev.qb.y)/d,nx=-dy,ny=dx,sd=P.defl||(P.defl=Math.random()<.5?-1:1);
-  const vv={miss:P.ev.miss==='short'?[dx*2,dy*2,-3]:[dx*9,dy*9,-2],drop:[dx*1.2+nx*.8*sd,dy*1.2+ny*.8*sd,3.4],pbu:[dx*1.5+nx*3.6*sd,dy*1.5+ny*3.6*sd,4.4],tip:[-dx+nx*2*sd,-dy+ny*2*sd,5.2]}[P.sub]||[dx*2,dy*2,1];
+  const vv={miss:P.ev.miss==='short'?[dx*2,dy*2,-3]:[dx*9,dy*9,-2],drop:[dx*6+nx*.7*sd,dy*6+ny*.7*sd,-1.5],pbu:[dx*1.5+nx*3.6*sd,dy*1.5+ny*3.6*sd,4.4],tip:[-dx+nx*2*sd,-dy+ny*2*sd,5.2]}[P.sub]||[dx*2,dy*2,1];
   const b=bounce(p,h,{x:vv[0],y:vv[1]},vv[2],t-tEnd);return{p:{x:b.x,y:b.y},h:b.h,air:!!b.moving,tumble:true};
 }
 
@@ -2015,8 +2015,8 @@ function cineActor(a,tg,P){const ev=P.ev,t=S.t,tb=tbOf(P),ct=S.phase==='cine'?(p
       const o=clone(POSE.idle);o.sh=[1.5,1.5];o.sz=1.35;o.el=[2.3,2.3];return{tg:o};}
     if(a.id===rid){if(ct<0)return near?{tg:{...clone(tg),sh:[2.6,2.6],el:[.3,.3]}}:null;return{tg:hips};}return null;}
   if(type==='drop'){if(a.id!==rid)return null;
-    if(ct<0){if(near&&t<tb+.12)return{tg:{...clone(tg),sh:[2.5,2.5],el:[.4,.4]}};if(t>=tb+.12)return{tg:helmetHands};return null;}
-    return{tg:ct>.7?clone(KNEEL):helmetHands};}
+    if(ct<0){if(near&&t<tb+.12)return{tg:{...clone(tg),sh:[2.5,2.5],el:[.4,.4]}};if(t>=tb+.12)return{tg:hips};return null;}
+    return{tg:hips};}   /* reaches, it's just past him, hands on hips (no helmet-grab or kneel: it reads as a missed throw, not his drop) */
   if(type==='tip'){if(a.id===lid&&near)return{tg:clone(REACH),y:jump};if(a.id===rid&&ct>=0)return{tg:hips};return null;}
   return null;}
 
@@ -2182,7 +2182,7 @@ const H={sound:store.get('sound')!=='off',ann:store.get('ann')!=='off'};AU.on=H.
 const ANN={on:H.ann,q:[],busy:false,last:{},buf:{},src:null,to:0,loading:false,
   load(){if(this.loading||!AU.ctx)return;this.loading=true;
     for(const [id,src] of Object.entries(ANN_FILES))fetch(src).then(r=>r.arrayBuffer()).then(b=>AU.ctx.decodeAudioData(b)).then(buf=>{this.buf[id]=buf;}).catch(()=>{});},
-  pick(ev){const ids=Object.keys(ANN_FILES).filter(k=>k.replace(/_\d+$/,'')===ev);if(!ids.length)return null;
+  pick(ev){const ids=ev==='offtarget'?['miss_2','miss_3'].filter(k=>ANN_FILES[k])/* 'Off target' / 'sailed on him' (not 'Overthrown. Nobody there': the receiver was right there) */:Object.keys(ANN_FILES).filter(k=>k.replace(/_\d+$/,'')===ev);if(!ids.length)return null;
     let c=ids.filter(k=>k!==this.last[ev]);if(!c.length)c=ids;const id=c[Math.random()*c.length|0];this.last[ev]=id;return id;},
   // the recording must END before the deadline: only variants with duration < maxSec; prefer ones that fill most of the gap
   sayFit(ev,maxSec){if(!this.on||!AU.on||!(maxSec>0))return null;
@@ -2198,7 +2198,7 @@ const ANN={on:H.ann,q:[],busy:false,last:{},buf:{},src:null,to:0,loading:false,
   stop(){this.q.length=0;clearTimeout(this.to);this.busy=false;this.cur=null;if(this.src){try{this.src.onended=null;this.src.stop();}catch(e){}this.src=null;}
     if(window.speechSynthesis&&!S.cadence)try{speechSynthesis.cancel();}catch(e){}}};
 const annKey=P=>P.sack?'sack':P.away?'throwaway':P.kind==='complete'?(P.gain>=play().ytg?'touchdown':P.spot&&P.spot.y>=20?'complete-deep':'complete')
-  :P.kind==='int'?'int':({pbu:'breakup',drop:'drop',miss:'miss',tip:'tipped'}[P.sub]||'breakup');
+  :P.kind==='int'?'int':({pbu:'breakup',drop:'offtarget',miss:'miss',tip:'tipped'}[P.sub]||'breakup');
 // pre-snap commentary: pick the pool that fits the situation (most specific first; red zone / late game mixed with the down)
 function presnapKey(p){const d=p.down,dist=p.dist,ytg=p.ytg;
   if(d===4)return'presnap-4th';if(dist>=ytg&&ytg<=10)return'presnap-goal';if(ytg>=90)return'presnap-backed-up';
@@ -2468,7 +2468,7 @@ const RES_EL=document.getElementById('results'),START_EL=document.getElementById
 // error reports: a few per page load, to the client_errors table (insert-only; no account or personal data)
 const ERR={n:0,seen:new Set()};
 function reportErr(e,where){try{const msg=String(e&&e.message||e).slice(0,500);console.error(where,e);if(ERR.n>=4||ERR.seen.has(msg)||!SUPA.url)return;ERR.n++;ERR.seen.add(msg);
-  const ctx=[where,S.phase,S.round&&S.round.kind,S.round&&S.round.i,coarse?'touch':'mouse',innerWidth+'x'+innerHeight,'v'+(document.lastModified||'')].join(' | ').slice(0,300);
+  const ctx=[where,S.phase,S.round&&S.round.kind,S.round&&S.round.i,coarse?'touch':'mouse',innerWidth+'x'+innerHeight,'pr'+(typeof AR!=='undefined'?AR.pr:''),'v'+(document.lastModified||'')].join(' | ').slice(0,300);
   fetch(SUPA.url+'/rest/v1/client_errors',{method:'POST',keepalive:true,headers:{apikey:SUPA.key,Authorization:'Bearer '+SUPA.key,'Content-Type':'application/json',Prefer:'return=minimal'},
     body:JSON.stringify({msg,stack:String(e&&e.stack||'').slice(0,2000),ctx,ua:navigator.userAgent.slice(0,300)})}).catch(()=>{});}catch(_){}}
 addEventListener('error',e=>reportErr(e.error||e.message,'window'));addEventListener('unhandledrejection',e=>reportErr(e.reason,'promise'));
